@@ -1,0 +1,63 @@
+resolution (m/pixel) (Bormann did not tell the resolution of the data so we just guess their resolution):
+Freiburg79_scan_furnitures_trashbins.png 0.05
+Freiburg101_scan.png 0.05
+Freiburg101_scan_furnitures_trashbins.png 0.05
+freiburg_building79.png 0.05
+freiburg_building52.png 0.05
+freiburg_building101.png 0.05
+intel_map.png 0.05
+lab_a.png 0.05
+lab_b.png 0.05
+lab_c.png 0.05
+lab_d_scan_furnitures.png 0.05
+lab_ipa_furnitures.png 0.05
+sistD.png 0.05
+lab_c_scan_furnitures_trashbins.png 0.05
+
+widest door width (m) and narrowest corridor width (m) (roughly measure with GIMP):
+Freiburg79_scan_furnitures_trashbins.png 0.85 2.7
+Freiburg101_scan.png 1.15 6
+Freiburg101_scan_furnitures_trashbins.png 1.15 6
+freiburg_building79.png 1.3 2.05
+freiburg_building52.png 0.85 1.65
+freiburg_building101.png 1.0 2.7
+intel_map.png 2.7 1.4
+lab_a.png 0.85 1.15
+lab_b.png 1.8 1.2
+lab_c.png 2.05 2.3
+lab_d_scan_furnitures.png 0.95 0.95
+lab_ipa_furnitures.png 1.3 1.6
+sistD.png 1.5 2.35
+lab_c_scan_furnitures_trashbins.png 2.2 2.05
+
+w (m) according to strategy:
+Freiburg79_scan_furnitures_trashbins.png 0.95
+Freiburg101_scan.png 1.25
+Freiburg101_scan_furnitures_trashbins.png 1.25
+freiburg_building79.png 1.4
+freiburg_building52.png 0.95
+freiburg_building101.png 1.1
+intel_map.png 1.3
+lab_a.png 0.95
+lab_b.png 1.1
+lab_c.png 2.15
+lab_d_scan_furnitures.png 1.05
+lab_ipa_furnitures.png 1.4
+sistD.png 1.6
+lab_c_scan_furnitures_trashbins.png 1.95
+
+noise percentage:
+Freiburg79_scan_furnitures_trashbins.png 1.5
+Freiburg101_scan.png 0
+Freiburg101_scan_furnitures_trashbins.png 0
+freiburg_building79.png 3.5
+freiburg_building52.png 3.5
+freiburg_building101.png 3.5 (please also set MAX_PLEN_REMOVAL as 380 in AlphaShapeRemoval.h for this map, because there is a big obstacle in the map)
+intel_map.png 3
+lab_a.png 0.2
+lab_b.png 3.5 
+lab_c.png 0
+lab_d_scan_furnitures.png 1
+lab_ipa_furnitures.png 2.5
+sistD.png 0.5
+lab_c_scan_furnitures_trashbins.png 2
