@@ -1,4 +1,4 @@
-# Last Edited by Jiajie 24.11.22
+# Last Edited by Jiajie 24.11.22 (Done)
 # 很好的把经过图层过滤的  cad.dxf 转化为保留了细节的svg
 import ezdxf
 import svgwrite
@@ -179,8 +179,8 @@ def dxf_to_svg(input_path, output_path, target_size=4000):  # 增加默认分辨
     
 
 if __name__ == "__main__":
-    input_file = "/home/jay/areaGraph_ws/data_cad/SIST_f1_latest1.dxf"
-    svg_file = "/home/jay/areaGraph_ws/data_cad/SIST_f1_latest_v5.svg"
+    input_file = "/home/johnnylin/area_graph_segment/data_dxf/SIST-F1_filtered_20241126_211945.dxf"
+    svg_file = "/home/johnnylin/area_graph_segment/data_dxf/new.svg"
     
     success, message = dxf_to_svg(input_file, svg_file)
     print(message)

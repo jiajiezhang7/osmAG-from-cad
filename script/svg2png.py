@@ -1,4 +1,5 @@
-# vanilla version， 可以把保留了dxf完美细节的svg转化为抗锯齿效果还不错的png，全白色背景，黑色线条为墙面
+# Last Edited by Jiajie (Done)
+#  可以把保留了dxf完美细节的svg转化为抗锯齿效果还不错的png，全白色背景，黑色线条为墙面
 import numpy as np
 import cv2
 from svgpathtools import svg2paths
