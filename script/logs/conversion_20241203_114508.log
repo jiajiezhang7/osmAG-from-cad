@@ -1,0 +1,2 @@
+2024-12-03 11:45:08,346 - INFO - ODA File Converter found at: /usr/bin/ODAFileConverter
+2024-12-03 11:45:09,804 - ERROR - Failed to convert /home/jay/agSeg_ws/area_graph_segment/data_dwg/SIST-F1.dwg. Return code: 0. Error: 

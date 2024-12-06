@@ -81,8 +81,8 @@ def save_occupancy_grid(occupancy_grid, output_path):
 
 # 使用示例
 if __name__ == "__main__":
-    svg_file = "/home/jay/areaGraph_ws/data_cad/SIST_f1_latest_v5.svg"
-    output_file = "/home/jay/areaGraph_ws/data_cad/oc_5.png"
+    svg_file = "/home/jay/agSeg_ws/area_graph_segment/data_img/SIST-F1_clear_edited.svg"
+    output_file = "/home/jay/agSeg_ws/area_graph_segment/data_img/SIST-F1_clear_edited.png"
     
     grid = svg_to_occupancy_grid(
         svg_file,
