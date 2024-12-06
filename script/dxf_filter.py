@@ -1,3 +1,5 @@
+# Last edited by Jiajie Zhang 2024.12.06
+# 该脚本用于将全图层dxf过滤为保留固定图层的dxf，在机理上已经成功了，但由于CAD文件图层的命名不规则性，用 hard-coded的方式是无法实现的
 import ezdxf
 import os
 from datetime import datetime

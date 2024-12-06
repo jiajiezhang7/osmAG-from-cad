@@ -1,3 +1,5 @@
+# Last edited by Jiajie Zhang 2024.12.06 
+# 该脚本用于将Jiawei's Area Graph Segmented 可视化颜色分割结果 ---> 黑色描边的封闭多边形.svg
 import cv2
 import numpy as np
 import potrace
@@ -7,48 +9,54 @@ import svgwrite
 def extract_boundaries(image_path, output_svg_path):
     """
     从分割图中提取边界并保存为SVG
-    
-    参数:
-        image_path: 输入的分割图路径
-        output_svg_path: 输出的SVG文件路径
     """
     # 读取图像
     img = cv2.imread(image_path)
     
-    # 转换为灰度图
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    
-    # 使用Canny边缘检测
-    edges = cv2.Canny(img, 50, 150)
-    
-    # 可选：使用形态学操作细化边缘
+    # 1. 处理黑色边缘
+    # 提取黑色像素
+    black_mask = np.all(img < 30, axis=2).astype(np.uint8) * 255
+    # 使用形态学操作连接断开的边缘
     kernel = np.ones((3,3), np.uint8)
-    edges = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)
+    black_edges = cv2.morphologyEx(black_mask, cv2.MORPH_CLOSE, kernel)
     
-    # 找到轮廓
-    contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # 2. 处理颜色边界
+    # 对图像进行轻度模糊以减少噪声
+    blurred = cv2.GaussianBlur(img, (3,3), 0)
+    # 计算颜色差异
+    color_edges = np.zeros_like(black_mask)
+    for i in range(img.shape[0]-1):
+        for j in range(img.shape[1]-1):
+            # 检查水平和垂直方向的颜色差异
+            diff_h = np.any(np.abs(blurred[i,j] - blurred[i,j+1]) > 30)
+            diff_v = np.any(np.abs(blurred[i,j] - blurred[i+1,j]) > 30)
+            if diff_h or diff_v:
+                color_edges[i,j] = 255
+
+    # 合并两种边缘
+    combined_edges = cv2.bitwise_or(black_edges, color_edges)
+    
+    # 使用更细致的轮廓检测参数
+    contours, _ = cv2.findContours(combined_edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_TC89_KCOS)
     
     # 创建SVG文件
     dwg = svgwrite.Drawing(output_svg_path, profile='tiny')
     
-    # 添加轮廓到SVG
+    # 添加轮廓到SVG，使用更小的简化参数
     for contour in contours:
-        # 简化轮廓点
-        epsilon = 0.01 * cv2.arcLength(contour, True)
-        approx = cv2.approxPolyDP(contour, epsilon, True)
-        
-        # 转换轮廓点为SVG路径
-        points = approx.reshape(-1, 2)
-        if len(points) >= 2:
+        if len(contour) >= 2:
+            # 使用更小的epsilon值以保留更多细节
+            epsilon = 0.001 * cv2.arcLength(contour, True)
+            approx = cv2.approxPolyDP(contour, epsilon, True)
+            
+            points = approx.reshape(-1, 2)
             path_data = f"M {points[0][0]},{points[0][1]}"
             for point in points[1:]:
                 path_data += f" L {point[0]},{point[1]}"
-            path_data += " Z"  # 闭合路径
+            path_data += " Z"
             
-            # 添加路径到SVG，使用黑色线条
             dwg.add(dwg.path(d=path_data, stroke='black', fill='none', stroke_width=1))
     
-    # 保存SVG文件
     dwg.save()
 
 def alternative_boundary_extraction(image_path):
@@ -78,12 +86,12 @@ def alternative_boundary_extraction(image_path):
 
 # 使用示例
 if __name__ == "__main__":
-    input_file = "segmentation_map.png"
-    output_file = "boundaries.svg"
+    input_file = "/home/jay/agSeg_ws/area_graph_segment/build/290.png"
+    output_file = "/home/jay/agSeg_ws/area_graph_segment/data_img/boundaries_290.svg"
     
     # 使用主要方法
     extract_boundaries(input_file, output_file)
     
     # 或者使用替代方法
     boundaries = alternative_boundary_extraction(input_file)
-    cv2.imwrite("boundaries.png", boundaries)
+    cv2.imwrite("/home/jay/agSeg_ws/area_graph_segment/data_img/boundaries_290.png", boundaries)

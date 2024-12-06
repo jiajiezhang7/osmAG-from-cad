@@ -8,6 +8,8 @@ from datetime import datetime
 from pathlib import Path
 import time
 
+# Last Modified by Jiajie Zhang 2024.12.05
+# 该脚本用于调用ODA File Converter，可实现 File Folder -> File Folder的转换，也可实现单个文件的转换(dwg -> dxf)
 class ODAConverter:
     def __init__(self, log_level=logging.INFO):
         """初始化转换器"""
@@ -74,46 +76,74 @@ class ODAConverter:
             
             # 确保输入文件存在
             if not os.path.exists(input_file):
+                self.logger.error(f"Input file does not exist: {input_file}")
                 return False, f"Input file not found: {input_file}"
-            
-            # 创建输出目录
-            os.makedirs(os.path.dirname(output_file), exist_ok=True)
             
             # 获取输入和输出文件的绝对路径
             input_abs = os.path.abspath(input_file)
             output_abs = os.path.abspath(output_file)
             
-            # 构建ODA命令
-            # 参数说明：
-            # ACAD2018 - AutoCAD 2018格式
-            # DXF - 输出格式
-            # 1 - 输出版本 (1 = 2000)
+            self.logger.debug(f"Input absolute path: {input_abs}")
+            self.logger.debug(f"Output absolute path: {output_abs}")
+            
+            # 检查输入文件权限
+            self.logger.debug(f"Input file permissions: {oct(os.stat(input_abs).st_mode)[-3:]}")
+            
+            # 创建输出目录
+            os.makedirs(os.path.dirname(output_abs), exist_ok=True)
+            
+            # 获取输入和输出文件的目录和文件名
+            input_dir = os.path.dirname(input_abs)
+            output_dir = os.path.dirname(output_abs)
+            input_filename = os.path.basename(input_abs)
+            
+            # 构建命令
             cmd = [
                 self.oda_path,
-                os.path.dirname(input_abs),  # 输入目录
-                os.path.dirname(output_abs),  # 输出目录
-                'ACAD2018',  # 输入格式
-                'DXF',       # 输出格式
-                '1',         # DXF版本 (2000)
-                os.path.basename(input_abs)  # 输入文件名
+                input_dir,          # ODA需要目录作为输入
+                output_dir,         # ODA需要目录作为输出
+                'ACAD2018',
+                'DXF',
+                '1',
+                input_filename      # 只传入文件名
             ]
+            
+            self.logger.debug(f"Executing command: {' '.join(cmd)}")
+            
             
             # 执行转换
             result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=300  # 5分钟超时
+                timeout=300
             )
             
-            # 检查结果
+            # 添加更详细的命令执行结果日志
+            self.logger.debug(f"命令执行详情:")
+            self.logger.debug(f"返回码: {result.returncode}")
+            self.logger.debug(f"标准输出: {result.stdout}")
+            self.logger.debug(f"标准错误: {result.stderr}")
+            
+            # 检查进程返回码
+            if result.returncode != 0:
+                error_msg = f"ODA转换失败 - 返回码: {result.returncode}\n输出: {result.stdout}\n错误: {result.stderr}"
+                self.logger.error(error_msg)
+                return False, error_msg
+            
+            # 检查输出文件
             if os.path.exists(output_file):
+                if os.path.getsize(output_file) == 0:
+                    error_msg = "输出文件大小为0字节，可能转换失败"
+                    self.logger.error(error_msg)
+                    return False, error_msg
+                
                 duration = time.time() - start_time
-                success_msg = f"Successfully converted {input_file} in {duration:.2f} seconds"
+                success_msg = f"成功转换 {input_file}，用时 {duration:.2f} 秒"
                 self.logger.info(success_msg)
                 return True, success_msg
             else:
-                error_msg = f"Failed to convert {input_file}: {result.stderr}"
+                error_msg = f"转换失败 - 未生成输出文件: {output_file}"
                 self.logger.error(error_msg)
                 return False, error_msg
                 
@@ -219,15 +249,24 @@ def main():
             # 批量转换目录
             converter.batch_convert(args.input, args.output, args.recursive)
         else:
-            # 转换单个文件
-            success, message = converter.convert_file(args.input, args.output)
+            # 如果输入是文件，但输出是目录，自动构造输出文件名
+            if os.path.isdir(args.output):
+                input_filename = os.path.basename(args.input)
+                output_file = os.path.join(
+                    args.output,
+                    os.path.splitext(input_filename)[0] + '.dxf'
+                )
+            else:
+                output_file = args.output
+                
+            success, message = converter.convert_file(args.input, output_file)
             if not success:
                 sys.exit(1)
     except KeyboardInterrupt:
-        converter.logger.info("\nConversion interrupted by user")
+        converter.logger.info("\n转换被用户中断")
         sys.exit(1)
     except Exception as e:
-        converter.logger.error(f"Conversion failed: {str(e)}")
+        converter.logger.error(f"转换失败: {str(e)}")
         sys.exit(1)
 
 if __name__ == "__main__":
