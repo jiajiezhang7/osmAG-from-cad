@@ -1,3 +1,0 @@
-2024-11-26 20:52:19,134 - INFO - ODA File Converter found at: /usr/bin/ODAFileConverter
-2024-11-26 20:52:21,286 - ERROR - Failed to convert /home/johnnylin/area_graph_segment/data_dwg/SIST-F1.dwg: qt.qpa.plugin: Could not find the Qt platform plugin "wayland" in ""
-
