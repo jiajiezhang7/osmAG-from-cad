@@ -1,9 +1,0 @@
-2024-12-03 11:58:13,622 - INFO - ODA File Converter found at: /usr/bin/ODAFileConverter
-2024-12-03 11:58:13,622 - INFO - Found 1 DWG files to process
-2024-12-03 11:58:15,179 - INFO - 成功转换 /home/jay/agSeg_ws/area_graph_segment/data_dwg/SIST-F1.dwg，用时 1.56 秒
-2024-12-03 11:58:15,179 - INFO - Progress: 100.0% (1/1)
-2024-12-03 11:58:15,179 - INFO - 
-Conversion Summary:
-2024-12-03 11:58:15,179 - INFO - Successfully converted: 1
-2024-12-03 11:58:15,179 - INFO - Failed conversions: 0
-2024-12-03 11:58:15,179 - INFO - Total files processed: 1
