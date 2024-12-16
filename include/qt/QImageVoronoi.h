@@ -6,6 +6,7 @@
 
 #include <QPainter>
 #include <QImage>
+#include <QPainterPath>
 #include <QDebug>
 
 //#include "TopoGeometry.h"
@@ -35,5 +36,6 @@ void paintVori_randomcolor(QImage &image, VoriGraph &voriGraph);
   void paintTopoPaths(TopoGraph &graph, QImage &image);
   
   
+void paintVori_OnlyOutline(QImage &image, VoriGraph &voriGraph);
 
 #endif

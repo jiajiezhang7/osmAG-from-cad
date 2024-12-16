@@ -92,7 +92,8 @@ int main(int argc, char *argv[]) {
 
     // 配置参数设定
     sConfig = new VoriConfig();
-    sConfig->doubleConfigVars["alphaShapeRemovalSquaredSize"] = 625;
+    // 增大alphaShapeRemovalSquaredSize的值（默认625）到900-1000，这样可以减少过度分割
+    sConfig->doubleConfigVars["alphaShapeRemovalSquaredSize"] = 900;
     sConfig->doubleConfigVars["firstDeadEndRemovalDistance"] = 100000;
     sConfig->doubleConfigVars["secondDeadEndRemovalDistance"] = -100000;
     sConfig->doubleConfigVars["thirdDeadEndRemovalDistance"] = 0.25 / res;
@@ -101,7 +102,8 @@ int main(int argc, char *argv[]) {
     sConfig->doubleConfigVars["topoGraphAngleCalcStartDistance"] = 3;
     sConfig->doubleConfigVars["topoGraphAngleCalcStepSize"] = 0.1;
     sConfig->doubleConfigVars["topoGraphDistanceToJoinVertices"] = 10;
-    sConfig->doubleConfigVars["topoGraphMarkAsFeatureEdgeLength"] = 16;
+    // 增大topoGraphMarkAsFeatureEdgeLength的值（当前为16）到20-24，这样可以减少特征边的生成
+    sConfig->doubleConfigVars["topoGraphMarkAsFeatureEdgeLength"] = 20;
     sConfig->doubleConfigVars["voronoiMinimumDistanceToObstacle"] = 0.25 / res;
     sConfig->doubleConfigVars["topoGraphDistanceToJoinVertices"] = 4;
 
@@ -217,10 +219,22 @@ int main(int argc, char *argv[]) {
 
     clock_t roomDetect = clock();
 
+    // 保存彩色区域图
     QImage dectRoom = test;
-    paintVori_onlyArea( dectRoom, voriGraph );
-    string tem_s = NumberToString( nearint( a * 100 )) + ".png";
-    dectRoom.save( tem_s.c_str());
+    paintVori_onlyArea(dectRoom, voriGraph);
+    string tem_s = NumberToString(nearint(a * 100)) + ".png";
+    dectRoom.save(tem_s.c_str());
+    
+    // 添加黑白轮廓输出
+    QImage outlineRoom = test;
+    paintVori_OnlyOutline(outlineRoom, voriGraph);
+    string outline_name = NumberToString(nearint(a * 100)) + "_outline.png";
+    if(!outlineRoom.save(outline_name.c_str())) {
+        std::cout << "Failed to save outline image to: " << outline_name << std::endl;
+    } else {
+        std::cout << "Successfully saved outline image to: " << outline_name << std::endl;
+    }
+
     //-----------------------------------------------------------------------------------------------
     // Region Merge
     clock_t beforeMerge = clock();

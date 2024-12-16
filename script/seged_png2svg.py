@@ -59,39 +59,10 @@ def extract_boundaries(image_path, output_svg_path):
     
     dwg.save()
 
-def alternative_boundary_extraction(image_path):
-    """
-    使用颜色差分方法提取边界
-    
-    参数:
-        image_path: 输入的分割图路径
-    返回:
-        边界图像
-    """
-    # 读取图像
-    img = cv2.imread(image_path)
-    
-    # 创建位移版本的图像
-    shifted_right = np.roll(img, 1, axis=1)
-    shifted_down = np.roll(img, 1, axis=0)
-    
-    # 计算颜色差异
-    diff_x = np.any(img != shifted_right, axis=2)
-    diff_y = np.any(img != shifted_down, axis=2)
-    
-    # 合并边界
-    boundaries = np.logical_or(diff_x, diff_y)
-    
-    return boundaries.astype(np.uint8) * 255
-
 # 使用示例
 if __name__ == "__main__":
-    input_file = "/home/jay/agSeg_ws/area_graph_segment/build/290.png"
-    output_file = "/home/jay/agSeg_ws/area_graph_segment/data_img/boundaries_290.svg"
+    input_file = "/home/jay/agSeg_ws/area_graph_segment/build/SIST_f1_latest_v5.png"
+    output_file = "/home/jay/agSeg_ws/area_graph_segment/data_img/closed_polygon_svg_SIST_f1_latest_v5.svg"
     
     # 使用主要方法
     extract_boundaries(input_file, output_file)
-    
-    # 或者使用替代方法
-    boundaries = alternative_boundary_extraction(input_file)
-    cv2.imwrite("/home/jay/agSeg_ws/area_graph_segment/data_img/boundaries_290.png", boundaries)

@@ -179,8 +179,8 @@ def dxf_to_svg(input_path, output_path, target_size=4000):  # 增加默认分辨
     
 
 if __name__ == "__main__":
-    input_file = "/home/jay/agSeg_ws/area_graph_segment/data_dxf/SIST-F1_clear.dxf"
-    svg_file = "/home/jay/agSeg_ws/area_graph_segment/data_img/SIST-F1_clear.svg"
+    input_file = "/home/jay/agSeg_ws/area_graph_segment/data_dxf/SIST-F1.dxf"
+    svg_file = "/home/jay/agSeg_ws/area_graph_segment/data_img/SIST-F1.svg"
     
     success, message = dxf_to_svg(input_file, svg_file)
     print(message)

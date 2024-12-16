@@ -10,7 +10,8 @@
 
 #define divide 10
 
-#define mergeLenThreshold 48 //20
+// 您可以尝试增大mergeLenThreshold的值（当前为48）到60-80，这样可以更容易合并小房间
+#define mergeLenThreshold 60 //20
 
 using namespace std;
 
