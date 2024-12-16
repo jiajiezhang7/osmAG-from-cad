@@ -639,33 +639,15 @@ void paintVori_AreaRoom(QImage &image, VoriGraph &voriGraph){
                          pointitr != polygonPtr->polygonpoints.end(); pointitr++) {
                         int x = round( topo_geometry::getX( *pointitr ));
                         int y = round( topo_geometry::getY( *pointitr ));
-                        //                    cout<<" point: "<<x<<", "<<y;
+
                         poly << QPoint( x, y );
-                    }
-                    int halfEdgeRoomId=voriHalfEdgeItr->getRoomId();
-//                    cout<<"halfEdgeRoomId= "<<halfEdgeRoomId<<endl;
-                    if(halfEdgeRoomId!=-1){
-//                        cout<<"enter if(voriHalfEdgeItr->roomId!=-1)..."<<endl;
-                        std::map<int, QColor>::iterator iter = roomColor.find(halfEdgeRoomId);
-                        if(iter!=roomColor.end())
-                        {
-                            QColor color1= iter->second;
-//                            cout<<"roomId= "<<halfEdgeRoomId<<
-//                                " QColor="<<color1.red()<<", "<<color1.blue()<<", "<<color1.green()<<endl;
-                            brush.setColor( color1 );
-                            brush.setStyle( Qt::SolidPattern );
-                            painter.setBrush( brush );
-                            painter.setPen( color1 );
-                        } else{
-                            roomColor[halfEdgeRoomId]=color;
-                        }
                     }
                     painter.drawPolygon( poly );
                     VoriGraphHalfEdge * twinHalfedge=voriHalfEdgeItr->twin;
                     if(twinHalfedge) {
                         drawnHalfEdge.insert( twinHalfedge );
                         VoriGraphPolygon *twinpolygonPtr = twinHalfedge->pathFace;
-                        if (twinpolygonPtr != 0) {
+                        if (twinHalfedge->pathFace&& !twinHalfedge->pathFace->polygonpoints.empty()) {
                             QPolygon twin_poly;
                             for (std::list<topo_geometry::point>::iterator pointitr = twinpolygonPtr->polygonpoints.begin();
                                  pointitr != twinpolygonPtr->polygonpoints.end(); pointitr++) {
@@ -723,6 +705,12 @@ void paintVori_AreaRoom(QImage &image, VoriGraph &voriGraph){
                 if(voriHalfEdgeItr->getPointForDistance(5, p)){
                     painter.drawPoint(round(topo_geometry::getX(p)), round(topo_geometry::getY(p)));
                 }
+/*          if(voriHalfEdgeItr->getPointForDistance(6, p)){
+            painter.drawPoint(round(p.x()), round(p.y()));
+          }
+          if(voriHalfEdgeItr->getPointForDistance(9, p)){
+            painter.drawPoint(round(p.x()), round(p.y()));
+          }*/
             }
         }
     }
@@ -823,7 +811,7 @@ void paintVori_onlyArea(QImage &image, VoriGraph &voriGraph){
                     painter.drawPolygon( poly );
                     VoriGraphHalfEdge * twinHalfedge=voriHalfEdgeItr->twin;
                     if(twinHalfedge) {
-                        drawnHalfEdge.insert( &*twinHalfedge );
+                        drawnHalfEdge.insert( twinHalfedge );
                         if (twinHalfedge->pathFace != 0) {
                             VoriGraphPolygon *twinpolygonPtr = twinHalfedge->pathFace;
                             QPolygon twin_poly;
@@ -835,14 +823,8 @@ void paintVori_onlyArea(QImage &image, VoriGraph &voriGraph){
                             }
 
                             painter.drawPolygon( twin_poly );
-                        } else{
-                            std::cout<<"qt  twin no pathface!!"<<endl;
                         }
-                    } else{
-                        std::cout<<"qt  no twin path!!"<<endl;
                     }
-                } else{
-                    std::cout<<"qt  no pathface!!"<<endl;
                 }
             }
 
@@ -1177,6 +1159,89 @@ void paintVori_pathFace_backup1(QImage &image, VoriGraph &voriGraph){//jiawei 6.
     }
 }
 
+
+void paintVori_OnlyOutline(QImage &image, VoriGraph &voriGraph) {
+    // 初始化画布和画笔
+    image.fill(Qt::white);
+    QPainter painter(&image);
+    
+    QPen outlinePen;
+    outlinePen.setColor(Qt::black);  
+    outlinePen.setWidth(2);         
+    outlinePen.setStyle(Qt::SolidLine);
+    painter.setPen(outlinePen);
+    
+    // 用于存储已处理的半边和房间颜色映射
+    std::set<VoriGraphHalfEdge *> drawnHalfEdge;
+    std::map<int, std::vector<QPolygon>> roomPolygons;
+    
+    // 第一次遍历：收集每个房间ID对应的所有多边形
+    std::list<VoriGraphHalfEdge>::iterator voriHalfEdgeItr;
+    for(voriHalfEdgeItr = voriGraph.halfEdges.begin(); 
+        voriHalfEdgeItr != voriGraph.halfEdges.end(); ++voriHalfEdgeItr) {
+        
+        if(!voriHalfEdgeItr->isRay() && 
+           drawnHalfEdge.find(&*voriHalfEdgeItr) == drawnHalfEdge.end()) {
+            
+            drawnHalfEdge.insert(&*voriHalfEdgeItr);
+            
+            VoriGraphPolygon * polygonPtr = voriHalfEdgeItr->pathFace;
+            if(polygonPtr != 0) {
+                int roomId = voriHalfEdgeItr->getRoomId();
+                if(roomId != -1) {  // 只处理有效的房间ID
+                    QPolygon poly;
+                    for(std::list<topo_geometry::point>::iterator pointitr = 
+                        polygonPtr->polygonpoints.begin();
+                        pointitr != polygonPtr->polygonpoints.end(); 
+                        pointitr++) {
+                        int x = round(topo_geometry::getX(*pointitr));
+                        int y = round(topo_geometry::getY(*pointitr));
+                        poly << QPoint(x, y);
+                    }
+                    roomPolygons[roomId].push_back(poly);
+                }
+                
+                // 处理twin边
+                if(voriHalfEdgeItr->twin) {
+                    drawnHalfEdge.insert(voriHalfEdgeItr->twin);
+                    VoriGraphPolygon * twinPolygonPtr = voriHalfEdgeItr->twin->pathFace;
+                    if(twinPolygonPtr != 0) {
+                        int twinRoomId = voriHalfEdgeItr->twin->getRoomId();
+                        if(twinRoomId != -1) {
+                            QPolygon twin_poly;
+                            for(std::list<topo_geometry::point>::iterator pointitr = 
+                                twinPolygonPtr->polygonpoints.begin();
+                                pointitr != twinPolygonPtr->polygonpoints.end(); 
+                                pointitr++) {
+                                int x = round(topo_geometry::getX(*pointitr));
+                                int y = round(topo_geometry::getY(*pointitr));
+                                twin_poly << QPoint(x, y);
+                            }
+                            roomPolygons[twinRoomId].push_back(twin_poly);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // 第二次遍历：为每个房间绘制合并后的轮廓
+    for(const auto& roomPair : roomPolygons) {
+        QPainterPath path;
+        bool firstPoly = true;
+        
+        for(const QPolygon& poly : roomPair.second) {
+            if(firstPoly) {
+                path.addPolygon(poly);
+                firstPoly = false;
+            } else {
+                path.addPolygon(poly);
+            }
+        }
+        
+        painter.drawPath(path);
+    }
+}
 
 
 
