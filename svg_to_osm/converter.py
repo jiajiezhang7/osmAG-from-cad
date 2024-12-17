@@ -6,7 +6,7 @@ from xml.dom import minidom
 import svgpathtools
 import numpy as np
 from pyproj import Transformer, CRS
-from settings import Settings
+from .settings import Settings
 
 class Node:
     def __init__(self, id: int, lat: float, lon: float):
@@ -93,6 +93,13 @@ class SvgConverter:
             always_xy=True
         )
         
+        # 计算中心点的Web墨卡托坐标
+        self.center_x, self.center_y = Transformer.from_crs(
+            CRS.from_epsg(4326),  # WGS84
+            CRS.from_epsg(3857),  # Web墨卡托
+            always_xy=True
+        ).transform(self.settings.center_lon, self.settings.center_lat)
+
     def _create_node(self, x: float, y: float, transform: Optional[Transform] = None) -> Node:
         """创建一个新的OSM节点，支持坐标变换"""
         if transform:
@@ -100,14 +107,11 @@ class SvgConverter:
             
         # 将SVG坐标转换为Web墨卡托坐标
         scale = self.settings.scale
-        mx = x * scale
-        my = -y * scale  # SVG的y轴向下，需要反转
+        mx = x * scale + self.center_x  # 添加中心点偏移
+        my = -y * scale + self.center_y  # SVG的y轴向下，需要反转
         
         # Web墨卡托坐标转WGS84经纬度
-        lon, lat = self.proj.transform(
-            mx + self.settings.center_lon,
-            my + self.settings.center_lat
-        )
+        lon, lat = self.proj.transform(mx, my)
         
         node = Node(self.node_id, lat, lon)
         self.node_id += 1
@@ -159,6 +163,106 @@ class SvgConverter:
                 self._create_node(x, y, combined_transform)  # 闭合路径
             ]
             self.ways.append(way)
+
+    def _process_path(self, path, transform: Optional[Transform] = None) -> Way:
+        """处理 SVG 路径并转换为 OSM way
+        
+        Args:
+            path: svgpathtools Path 对象
+            transform: 可选的坐标变换
+        
+        Returns:
+            Way: 包含转换后节点的 OSM way
+        """
+        way = Way(self.way_id)
+        self.way_id += 1
+        
+        # 如果路径为空，直接返回
+        if not path:
+            return way
+            
+        last_point = None
+        min_distance_squared = self.settings.min_segment_length ** 2
+        
+        # 处理路径中的每个段
+        for segment in path:
+            # 根据曲线类型计算采样点
+            points = []
+            if hasattr(segment, 'start'):
+                points.append((segment.start.real, segment.start.imag))
+                
+            # 对曲线进行采样
+            for t in np.linspace(0, 1, self.settings.curve_steps)[1:]:
+                point = segment.point(t)
+                points.append((point.real, point.imag))
+                
+            # 处理采样点
+            for x, y in points:
+                # 如果存在上一个点，检查新点是否离得太近
+                if last_point is not None:
+                    dx = x - last_point[0]
+                    dy = y - last_point[1]
+                    if dx * dx + dy * dy < min_distance_squared:
+                        continue
+                        
+                # 创建新节点
+                node = self._create_node(x, y, transform)
+                way.nodes.append(node)
+                last_point = (x, y)
+        
+        # 如果设置要求闭合路径，且路径未闭合，则添加起始点作为终点
+        if (self.settings.close_paths and 
+            way.nodes and 
+            len(way.nodes) > 1 and 
+            (way.nodes[0].lat != way.nodes[-1].lat or 
+             way.nodes[0].lon != way.nodes[-1].lon)):
+            way.nodes.append(way.nodes[0])
+        
+        # 如果路径至少有两个点，则添加到ways列表
+        if len(way.nodes) >= 2:
+            self.ways.append(way)
+            
+        return way
+
+    def _create_osm_xml(self) -> str:
+        """创建OSM XML输出
+        
+        Returns:
+            str: 格式化的OSM XML字符串
+        """
+        osm = ET.Element('osm', version='0.6', generator='svg_to_osm')
+        
+        # 添加所有节点
+        for node in self.nodes:
+            node_elem = ET.SubElement(osm, 'node',
+                id=f'-{node.id}',  # 添加负号前缀
+                action='modify',
+                visible='true',
+                lat=f"{node.lat:.8f}",
+                lon=f"{node.lon:.8f}"
+            )
+            # 如果有标签则添加
+            for key, value in node.tags.items():
+                tag = ET.SubElement(node_elem, 'tag', k=key, v=str(value))
+        
+        # 添加所有路径
+        for way in self.ways:
+            way_elem = ET.SubElement(osm, 'way',
+                id=f'-{way.id}',  # 添加负号前缀
+                action='modify',
+                visible='true'
+            )
+            # 添加way的节点引用
+            for node in way.nodes:
+                ET.SubElement(way_elem, 'nd', ref=f'-{node.id}')  # 节点引用也需要负号前缀
+            # 添加way的标签
+            for key, value in way.tags.items():
+                tag = ET.SubElement(way_elem, 'tag', k=key, v=str(value))
+        
+        # 格式化XML输出
+        xml_str = ET.tostring(osm, encoding='unicode')
+        dom = minidom.parseString(xml_str)
+        return dom.toprettyxml(indent="  ")
 
     def convert_file(self, input_path: Path, output_path: Path):
         """转换SVG文件到OSM XML"""
