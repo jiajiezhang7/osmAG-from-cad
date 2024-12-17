@@ -62,7 +62,7 @@ def extract_boundaries(image_path, output_svg_path):
 # 使用示例
 if __name__ == "__main__":
     input_file = "/home/jay/agSeg_ws/area_graph_segment/build/SIST_f1_latest_v5.png"
-    output_file = "/home/jay/agSeg_ws/area_graph_segment/data_img/closed_polygon_svg_SIST_f1_latest_v5.svg"
+    output_file = "/home/jay/agSeg_ws/area_graph_segment/data_img/closed_polygon_v0_svg_SIST_f1_latest_v5.svg"
     
     # 使用主要方法
     extract_boundaries(input_file, output_file)
