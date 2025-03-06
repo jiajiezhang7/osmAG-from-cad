@@ -846,31 +846,37 @@ void RMG::AreaGraph::optimizeRoomPolygonsForPassages()
             continue;
         }
         
-        // 创建新的多边形，必须包含所有通道端点
-        std::list<topo_geometry::point> optimizedPolygon;
+        // 为每对通道端点创建映射，用于后续处理
+        std::vector<std::pair<topo_geometry::point, topo_geometry::point>> passageEndpointPairs;
         
-        // 先复制原始多边形的所有点
-        optimizedPolygon = roomVtx->polygon;
+        // 找出属于同一通道的端点对
+        for (const auto& passage : allPassages) {
+            if (passage.roomA == roomVtx || passage.roomB == roomVtx) {
+                passageEndpointPairs.push_back(std::make_pair(passage.pointA, passage.pointB));
+            }
+        }
         
-        // 确保通道端点在多边形中
+        // 先确保通道端点在房间多边形中
+        std::list<topo_geometry::point> tempPolygon = roomVtx->polygon;
+        
+        // 先插入所有通道端点（如果尚未存在）
         for (const auto& passagePoint : passagePoints) {
             bool found = false;
-            for (const auto& polygonPoint : optimizedPolygon) {
+            for (const auto& polygonPoint : tempPolygon) {
                 if (equalLineVertex(passagePoint, polygonPoint)) {
                     found = true;
                     break;
                 }
             }
             
-            // 如果通道端点不在多边形中，查找最近的边并插入
             if (!found) {
-                auto it = optimizedPolygon.begin();
+                // 找到最近的边并插入
+                auto it = tempPolygon.begin();
                 auto itNext = std::next(it);
                 double minDist = std::numeric_limits<double>::max();
-                auto bestPos = optimizedPolygon.end();
+                auto bestPos = tempPolygon.end();
                 
-                // 找到最合适的插入位置
-                while (itNext != optimizedPolygon.end()) {
+                while (itNext != tempPolygon.end()) {
                     double dist = boost::geometry::distance(*it, passagePoint) + 
                                  boost::geometry::distance(*itNext, passagePoint);
                     if (dist < minDist) {
@@ -881,18 +887,95 @@ void RMG::AreaGraph::optimizeRoomPolygonsForPassages()
                     ++itNext;
                 }
                 
-                // 考虑最后一个边（最后一个点和第一个点之间）
-                double lastDist = boost::geometry::distance(optimizedPolygon.back(), passagePoint) + 
-                               boost::geometry::distance(optimizedPolygon.front(), passagePoint);
+                double lastDist = boost::geometry::distance(tempPolygon.back(), passagePoint) + 
+                               boost::geometry::distance(tempPolygon.front(), passagePoint);
                 if (lastDist < minDist) {
-                    bestPos = optimizedPolygon.begin();
+                    bestPos = tempPolygon.begin();
                 }
                 
-                // 在最合适的位置插入通道端点
-                if (bestPos != optimizedPolygon.end()) {
-                    optimizedPolygon.insert(bestPos, passagePoint);
+                if (bestPos != tempPolygon.end()) {
+                    tempPolygon.insert(bestPos, passagePoint);
                 }
             }
+        }
+        
+        // 根据通道端点对重构多边形
+        std::list<topo_geometry::point> optimizedPolygon;
+        bool needsOptimization = !passageEndpointPairs.empty();
+        
+        if (needsOptimization) {
+            // 将多边形转换为vector以便索引访问
+            std::vector<topo_geometry::point> polygonPoints(tempPolygon.begin(), tempPolygon.end());
+            int n = polygonPoints.size();
+            
+            // 找出所有通道端点在多边形中的索引位置
+            std::map<topo_geometry::point, int, topo_geometry::Smaller> pointToIndex;
+            for (int i = 0; i < n; ++i) {
+                for (const auto& passagePoint : passagePoints) {
+                    if (equalLineVertex(polygonPoints[i], passagePoint)) {
+                        pointToIndex[passagePoint] = i;
+                        break;
+                    }
+                }
+            }
+            
+            // 创建保留点的mask
+            std::vector<bool> keepPoint(n, true);
+            
+            // 对每对通道端点，删除它们之间的点（选择较短的路径）
+            for (const auto& endpointPair : passageEndpointPairs) {
+                // 找到点在多边形中的索引位置
+                int idx1 = -1, idx2 = -1;
+                
+                // 手动查找索引，因为直接使用map的find可能会因为浮点比较精度问题失败
+                for (int i = 0; i < n; ++i) {
+                    if (equalLineVertex(polygonPoints[i], endpointPair.first)) {
+                        idx1 = i;
+                    }
+                    if (equalLineVertex(polygonPoints[i], endpointPair.second)) {
+                        idx2 = i;
+                    }
+                }
+                
+                // 确认两个端点都在多边形中
+                if (idx1 != -1 && idx2 != -1) {
+                    // 确保idx1 < idx2，如果需要则交换
+                    if (idx1 > idx2) {
+                        std::swap(idx1, idx2);
+                    }
+                    
+                    // 计算两种路径的长度：idx1->idx2 和 idx2->idx1+n
+                    int path1Length = idx2 - idx1 - 1;
+                    int path2Length = (idx1 + n) - idx2 - 1;
+                    
+                    if (path1Length < path2Length) {
+                        // 删除第一条路径上的点
+                        for (int i = idx1 + 1; i < idx2; ++i) {
+                            keepPoint[i] = false;
+                        }
+                    } else {
+                        // 删除第二条路径上的点
+                        for (int i = idx2 + 1; i < idx1 + n; ++i) {
+                            keepPoint[i % n] = false;
+                        }
+                    }
+                }
+            }
+            
+            // 根据keepPoint构建新的多边形
+            for (int i = 0; i < n; ++i) {
+                if (keepPoint[i]) {
+                    optimizedPolygon.push_back(polygonPoints[i]);
+                }
+            }
+        } else {
+            // 如果没有需要优化的通道端点对，使用tempPolygon
+            optimizedPolygon = tempPolygon;
+        }
+        
+        // 确保多边形仍然闭合
+        if (!optimizedPolygon.empty() && !equalLineVertex(optimizedPolygon.front(), optimizedPolygon.back())) {
+            optimizedPolygon.push_back(optimizedPolygon.front());
         }
         
         // 更新房间的多边形
@@ -903,6 +986,20 @@ void RMG::AreaGraph::optimizeRoomPolygonsForPassages()
 // 将AreaGraph导出为osmAG.xml格式
 void RMG::AreaGraph::exportToOsmAG(const std::string& filename)
 {
+    // 添加调试信息
+    std::cout << "开始导出AreaGraph到" << filename << std::endl;
+    
+    // 检查originSet中是否有重复的房间ID
+    std::map<int, int> roomIdCount;
+    for (auto roomVtx : originSet) {
+        roomIdCount[roomVtx->roomId]++;
+    }
+    
+    for (const auto& pair : roomIdCount) {
+        if (pair.second > 1) {
+            std::cout << "警告: 房间ID " << pair.first << " 在originSet中出现了 " << pair.second << " 次!" << std::endl;
+        }
+    }
     
     // 创建XML文档
     std::ofstream osmFile(filename);
@@ -963,32 +1060,13 @@ void RMG::AreaGraph::exportToOsmAG(const std::string& filename)
         roomVertexToNodeIds[roomVtx] = nodeIds;
     }
     
-    // 3. 创建房间(way)
+    // 3. 创建房间way的ID映射（但暂不创建way，等优化后再创建）
     int nextWayId = -1;
     std::map<roomVertex*, int> roomToWayId;
     
     for (auto roomVtx : originSet) {
         int wayId = nextWayId--;
         roomToWayId[roomVtx] = wayId;
-        
-        osmFile << "  <way id='" << wayId << "' action='modify' visible='true'>\n";
-        
-        // 添加所有节点引用
-        auto& nodeIds = roomVertexToNodeIds[roomVtx];
-        for (int nodeId : nodeIds) {
-            osmFile << "    <nd ref='" << nodeId << "' />\n";
-        }
-        // 确保闭合（第一个点和最后一个点相同）
-        if (!nodeIds.empty() && nodeIds.front() != nodeIds.back()) {
-            osmFile << "    <nd ref='" << nodeIds.front() << "' />\n";
-        }
-        
-        // 添加房间标签
-        osmFile << "    <tag k='indoor' v='room' />\n";
-        osmFile << "    <tag k='name' v='room_" << roomVtx->roomId << "' />\n";
-        osmFile << "    <tag k='osmAG:areaType' v='room' />\n";
-        osmFile << "    <tag k='osmAG:type' v='area' />\n";
-        osmFile << "  </way>\n";
     }
     
     // 4. 获取所有通道端点信息
@@ -1194,16 +1272,32 @@ void RMG::AreaGraph::exportToOsmAG(const std::string& filename)
     }
     
     // 5. 调用已有的函数优化房间多边形，使通道与房间边界重合
+    // 输出优化前的房间信息
+    std::cout << "优化前房间数量: " << originSet.size() << std::endl;
+    for (auto roomVtx : originSet) {
+        if (roomVtx->roomId == 25 || roomVtx->roomId == 3) {
+            std::cout << "优化前房间ID: " << roomVtx->roomId << ", 多边形点数: " << roomVtx->polygon.size() << std::endl;
+        }
+    }
+    
     optimizeRoomPolygonsForPassages();
     
-    // 重新生成所有房间节点ID，因为多边形可能已经被优化
+    // 输出优化后的房间信息
+    std::cout << "优化后房间数量: " << originSet.size() << std::endl;
+    for (auto roomVtx : originSet) {
+        if (roomVtx->roomId == 25 || roomVtx->roomId == 3) {
+            std::cout << "优化后房间ID: " << roomVtx->roomId << ", 多边形点数: " << roomVtx->polygon.size() << std::endl;
+        }
+    }
+    
+    // 重新生成所有房间节点ID，因为多边形已经被优化
     roomVertexToNodeIds.clear(); // 清除所有现有的房间节点ID映射
     
-    // 重新遍历所有房间，生成节点ID
+    // 重新遍历所有房间，生成节点ID（仅使用优化后的多边形）
     for (auto roomVtx : originSet) {
         std::vector<int> nodeIds;
         
-        // 从房间的多边形中提取所有点
+        // 从优化后的房间多边形中提取所有点
         for (auto it = roomVtx->polygon.begin(); it != roomVtx->polygon.end(); ++it) {
             topo_geometry::point point = *it;
             
@@ -1237,8 +1331,32 @@ void RMG::AreaGraph::exportToOsmAG(const std::string& filename)
         roomVertexToNodeIds[roomVtx] = nodeIds;
     }
     
-    // 重新输出所有房间way，使用优化后的多边形
+    // 输出所有房间way，仅使用优化后的多边形
+    // 创建一个集合来跟踪已经处理过的房间ID
+    std::set<int> processedRoomIds;
+    
     for (auto roomVtx : originSet) {
+        // 调试输出，跟踪room_25和room_3
+        if (roomVtx->roomId == 25 || roomVtx->roomId == 3) {
+            std::cout << "正在处理房间ID: " << roomVtx->roomId << ", 多边形点数: " << roomVtx->polygon.size() << std::endl;
+            
+            // 输出多边形的点坐标，便于调试
+            std::cout << "多边形坐标: ";
+            for (const auto& point : roomVtx->polygon) {
+                std::cout << "(" << topo_geometry::getX(point) << "," << topo_geometry::getY(point) << ") ";
+            }
+            std::cout << std::endl;
+        }
+        
+        // 检查这个房间ID是否已经处理过
+        if (processedRoomIds.find(roomVtx->roomId) != processedRoomIds.end()) {
+            std::cout << "警告: 房间ID " << roomVtx->roomId << " 重复出现在originSet中!" << std::endl;
+            continue; // 跳过重复的房间ID
+        }
+        
+        // 记录这个房间ID已经被处理
+        processedRoomIds.insert(roomVtx->roomId);
+        
         int wayId = roomToWayId[roomVtx];
         
         osmFile << "  <way id='" << wayId << "' action='modify' visible='true'>\n";
@@ -1258,6 +1376,7 @@ void RMG::AreaGraph::exportToOsmAG(const std::string& filename)
         osmFile << "    <tag k='name' v='room_" << roomVtx->roomId << "' />\n";
         osmFile << "    <tag k='osmAG:areaType' v='room' />\n";
         osmFile << "    <tag k='osmAG:type' v='area' />\n";
+        osmFile << "    <tag k='osmAG:optimized' v='true' />\n"; // 添加标记表明这是优化后的多边形
         osmFile << "  </way>\n";
     }
     
