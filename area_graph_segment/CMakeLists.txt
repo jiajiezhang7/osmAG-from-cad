@@ -63,7 +63,8 @@ add_library(topo_graph_2d STATIC
   src/cgal/CgalVoronoi.cpp
   src/cgal/AlphaShape.cpp
   src/qt/QImageVoronoi.cpp
-  src/cgal/AlphaShapeRemoval.cpp)
+  src/cgal/AlphaShapeRemoval.cpp
+  src/osmAGExport.cpp)
 
 # 包含头文件目录
 include_directories(${TOPO_GRAPH_2D_SOURCE_DIR}/include)
