@@ -684,9 +684,226 @@ static std::pair<double, double> cartesianToLatLon(double x, double y, const top
     return std::make_pair(lat, lon);
 }
 
+// 优化房间多边形，使通道与房间边界重合
+void RMG::AreaGraph::optimizeRoomPolygonsForPassages()
+{
+    // 保存所有通道的端点信息
+    struct PassageEndpoints {
+        topo_geometry::point pointA;
+        topo_geometry::point pointB;
+        roomVertex* roomA;
+        roomVertex* roomB;
+    };
+    
+    std::vector<PassageEndpoints> allPassages;
+    
+    // 第一步：收集所有通道的端点信息
+    for (auto passageEdge : passageEList) {
+        if (passageEdge->connectedAreas.size() == 2) {
+            roomVertex* roomA = passageEdge->connectedAreas[0];
+            roomVertex* roomB = passageEdge->connectedAreas[1];
+            
+            // 定义判断两个点是否接近的阈值
+            const double POINT_PROXIMITY_THRESHOLD = 0.5; // 根据实际坐标系调整
+            
+            // 计算通道附近的点
+            const int MAX_POINTS_TO_CONSIDER = 10;
+            std::vector<std::pair<topo_geometry::point, double>> roomAPoints, roomBPoints;
+            
+            // 收集房间A中距离通道最近的点
+            for (const auto& point : roomA->polygon) {
+                double dist = boost::geometry::distance(point, passageEdge->position);
+                roomAPoints.push_back(std::make_pair(point, dist));
+            }
+            
+            // 按距离排序
+            std::sort(roomAPoints.begin(), roomAPoints.end(), 
+                [](const auto& a, const auto& b) { return a.second < b.second; });
+            
+            // 限制为前N个点
+            if (roomAPoints.size() > MAX_POINTS_TO_CONSIDER) {
+                roomAPoints.resize(MAX_POINTS_TO_CONSIDER);
+            }
+            
+            // 收集房间B中距离通道最近的点
+            for (const auto& point : roomB->polygon) {
+                double dist = boost::geometry::distance(point, passageEdge->position);
+                roomBPoints.push_back(std::make_pair(point, dist));
+            }
+            
+            // 按距离排序
+            std::sort(roomBPoints.begin(), roomBPoints.end(), 
+                [](const auto& a, const auto& b) { return a.second < b.second; });
+            
+            // 限制为前N个点
+            if (roomBPoints.size() > MAX_POINTS_TO_CONSIDER) {
+                roomBPoints.resize(MAX_POINTS_TO_CONSIDER);
+            }
+            
+            // 从这些点中找出两个房间的共有边界点（或相距非常近的点）
+            std::vector<std::pair<topo_geometry::point, topo_geometry::point>> sharedPoints;
+            
+            for (const auto& pointA_pair : roomAPoints) {
+                for (const auto& pointB_pair : roomBPoints) {
+                    const auto& pointACandidate = pointA_pair.first;
+                    const auto& pointBCandidate = pointB_pair.first;
+                    
+                    double pointDistance = boost::geometry::distance(pointACandidate, pointBCandidate);
+                    if (pointDistance < POINT_PROXIMITY_THRESHOLD) {
+                        sharedPoints.push_back(std::make_pair(pointACandidate, pointBCandidate));
+                    }
+                }
+            }
+            
+            // 找到两个点作为通道端点
+            topo_geometry::point pointA, pointB;
+            
+            // 如果找到了至少两对共有边界点，选择相距最远的两对
+            if (sharedPoints.size() >= 2) {
+                double maxDist = 0;
+                size_t maxI = 0, maxJ = 1;
+                
+                for (size_t i = 0; i < sharedPoints.size(); ++i) {
+                    for (size_t j = i + 1; j < sharedPoints.size(); ++j) {
+                        double dist = boost::geometry::distance(sharedPoints[i].first, sharedPoints[j].first);
+                        if (dist > maxDist) {
+                            maxDist = dist;
+                            maxI = i;
+                            maxJ = j;
+                        }
+                    }
+                }
+                
+                pointA = sharedPoints[maxI].first;
+                pointB = sharedPoints[maxJ].first;
+            } 
+            else if (sharedPoints.size() == 1) {
+                pointA = sharedPoints[0].first;
+                
+                double maxDist = 0;
+                for (const auto& pointB_pair : roomBPoints) {
+                    double dist = boost::geometry::distance(pointA, pointB_pair.first);
+                    if (dist > maxDist) {
+                        maxDist = dist;
+                        pointB = pointB_pair.first;
+                    }
+                }
+                
+                if (maxDist < 0.01) {
+                    for (const auto& pointA_pair : roomAPoints) {
+                        double dist = boost::geometry::distance(pointA, pointA_pair.first);
+                        if (dist > maxDist) {
+                            maxDist = dist;
+                            pointB = pointA_pair.first;
+                        }
+                    }
+                }
+            }
+            else {
+                if (!roomAPoints.empty() && !roomBPoints.empty()) {
+                    pointA = roomAPoints[0].first;
+                    pointB = roomBPoints[0].first;
+                }
+                else if (!passageEdge->line.cwline.empty()) {
+                    pointA = passageEdge->line.cwline.front();
+                    pointB = passageEdge->line.cwline.back();
+                }
+                else {
+                    pointA = passageEdge->position;
+                    double newX = topo_geometry::getX(passageEdge->position) + 0.01;
+                    double newY = topo_geometry::getY(passageEdge->position) + 0.01;
+                    pointB = topo_geometry::point(newX, newY);
+                }
+            }
+            
+            // 收集通道端点信息
+            PassageEndpoints endpoints;
+            endpoints.pointA = pointA;
+            endpoints.pointB = pointB;
+            endpoints.roomA = roomA;
+            endpoints.roomB = roomB;
+            allPassages.push_back(endpoints);
+        }
+    }
+    
+    // 第二步：优化每个房间的多边形
+    for (auto roomVtx : originSet) {
+        // 收集与该房间相关的所有通道端点
+        std::vector<topo_geometry::point> passagePoints;
+        for (const auto& passage : allPassages) {
+            if (passage.roomA == roomVtx) {
+                passagePoints.push_back(passage.pointA);
+                passagePoints.push_back(passage.pointB);
+            }
+            else if (passage.roomB == roomVtx) {
+                passagePoints.push_back(passage.pointA);
+                passagePoints.push_back(passage.pointB);
+            }
+        }
+        
+        // 如果没有通道端点，跳过优化
+        if (passagePoints.empty()) {
+            continue;
+        }
+        
+        // 创建新的多边形，必须包含所有通道端点
+        std::list<topo_geometry::point> optimizedPolygon;
+        
+        // 先复制原始多边形的所有点
+        optimizedPolygon = roomVtx->polygon;
+        
+        // 确保通道端点在多边形中
+        for (const auto& passagePoint : passagePoints) {
+            bool found = false;
+            for (const auto& polygonPoint : optimizedPolygon) {
+                if (equalLineVertex(passagePoint, polygonPoint)) {
+                    found = true;
+                    break;
+                }
+            }
+            
+            // 如果通道端点不在多边形中，查找最近的边并插入
+            if (!found) {
+                auto it = optimizedPolygon.begin();
+                auto itNext = std::next(it);
+                double minDist = std::numeric_limits<double>::max();
+                auto bestPos = optimizedPolygon.end();
+                
+                // 找到最合适的插入位置
+                while (itNext != optimizedPolygon.end()) {
+                    double dist = boost::geometry::distance(*it, passagePoint) + 
+                                 boost::geometry::distance(*itNext, passagePoint);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        bestPos = itNext;
+                    }
+                    ++it;
+                    ++itNext;
+                }
+                
+                // 考虑最后一个边（最后一个点和第一个点之间）
+                double lastDist = boost::geometry::distance(optimizedPolygon.back(), passagePoint) + 
+                               boost::geometry::distance(optimizedPolygon.front(), passagePoint);
+                if (lastDist < minDist) {
+                    bestPos = optimizedPolygon.begin();
+                }
+                
+                // 在最合适的位置插入通道端点
+                if (bestPos != optimizedPolygon.end()) {
+                    optimizedPolygon.insert(bestPos, passagePoint);
+                }
+            }
+        }
+        
+        // 更新房间的多边形
+        roomVtx->polygon = optimizedPolygon;
+    }
+}
+
 // 将AreaGraph导出为osmAG.xml格式
 void RMG::AreaGraph::exportToOsmAG(const std::string& filename)
 {
+    
     // 创建XML文档
     std::ofstream osmFile(filename);
     osmFile << "<?xml version='1.0' encoding='UTF-8'?>\n";
@@ -774,31 +991,142 @@ void RMG::AreaGraph::exportToOsmAG(const std::string& filename)
         osmFile << "  </way>\n";
     }
     
-    // 4. 创建通道(passage)
-    int passageCount = 1;
+    // 4. 获取所有通道端点信息
+    struct PassagePoint {
+        topo_geometry::point point;
+        roomVertex* roomA;
+        roomVertex* roomB;
+        int nodeId;
+    };
+    
+    std::vector<std::pair<PassagePoint, PassagePoint>> passagePoints;
+    
+    // 先遍历所有通道，找出并记录它们的正确端点
     for (auto passageEdge : passageEList) {
-        int wayId = nextWayId--;
-        
-        // 只创建连接两个房间的通道
+        // 只处理连接两个房间的通道
         if (passageEdge->connectedAreas.size() == 2) {
             roomVertex* roomA = passageEdge->connectedAreas[0];
             roomVertex* roomB = passageEdge->connectedAreas[1];
             
-            // 获取通道线的端点，如果没有具体线，则使用位置点
+            // 找到两个房间共有边界点中相距最远的两个点作为通道两端
             topo_geometry::point pointA, pointB;
             
-            // 如果有线定义，使用线的端点
-            if (!passageEdge->line.cwline.empty()) {
-                pointA = passageEdge->line.cwline.front();
-                pointB = passageEdge->line.cwline.back();
-            } else {
-                // 如果没有线定义，使用位置点作为端点
-                pointA = passageEdge->position;
-                // 创建一个稍微偏移的点作为第二个端点
-                double newX = topo_geometry::getX(passageEdge->position) + 0.0001;
-                double newY = topo_geometry::getY(passageEdge->position) + 0.0001;
-                topo_geometry::point tmpPoint(newX, newY);
-                pointB = tmpPoint;
+            // 定义判断两个点是否接近的阈值
+            const double POINT_PROXIMITY_THRESHOLD = 0.5; // 根据实际坐标系调整
+            
+            // 计算通道附近的点（取两个房间中到通道距离最小的前N个点）
+            const int MAX_POINTS_TO_CONSIDER = 10;
+            std::vector<std::pair<topo_geometry::point, double>> roomAPoints, roomBPoints;
+            
+            // 收集房间A中距离通道最近的点
+            for (const auto& point : roomA->polygon) {
+                double dist = boost::geometry::distance(point, passageEdge->position);
+                roomAPoints.push_back(std::make_pair(point, dist));
+            }
+            
+            // 按距离排序
+            std::sort(roomAPoints.begin(), roomAPoints.end(), 
+                [](const auto& a, const auto& b) { return a.second < b.second; });
+            
+            // 限制为前N个点
+            if (roomAPoints.size() > MAX_POINTS_TO_CONSIDER) {
+                roomAPoints.resize(MAX_POINTS_TO_CONSIDER);
+            }
+            
+            // 收集房间B中距离通道最近的点
+            for (const auto& point : roomB->polygon) {
+                double dist = boost::geometry::distance(point, passageEdge->position);
+                roomBPoints.push_back(std::make_pair(point, dist));
+            }
+            
+            // 按距离排序
+            std::sort(roomBPoints.begin(), roomBPoints.end(), 
+                [](const auto& a, const auto& b) { return a.second < b.second; });
+            
+            // 限制为前N个点
+            if (roomBPoints.size() > MAX_POINTS_TO_CONSIDER) {
+                roomBPoints.resize(MAX_POINTS_TO_CONSIDER);
+            }
+            
+            // 从这些点中找出两个房间的共有边界点（或相距非常近的点）
+            std::vector<std::pair<topo_geometry::point, topo_geometry::point>> sharedPoints;
+            
+            for (const auto& pointA_pair : roomAPoints) {
+                for (const auto& pointB_pair : roomBPoints) {
+                    const auto& pointACandidate = pointA_pair.first;
+                    const auto& pointBCandidate = pointB_pair.first;
+                    
+                    double pointDistance = boost::geometry::distance(pointACandidate, pointBCandidate);
+                    if (pointDistance < POINT_PROXIMITY_THRESHOLD) {
+                        // 这两个点尽管不完全相同，但很接近，可以视为共有边界点
+                        sharedPoints.push_back(std::make_pair(pointACandidate, pointBCandidate));
+                    }
+                }
+            }
+            
+            // 如果找到了至少两对共有边界点，选择相距最远的两对
+            if (sharedPoints.size() >= 2) {
+                double maxDist = 0;
+                size_t maxI = 0, maxJ = 1;
+                
+                for (size_t i = 0; i < sharedPoints.size(); ++i) {
+                    for (size_t j = i + 1; j < sharedPoints.size(); ++j) {
+                        double dist = boost::geometry::distance(sharedPoints[i].first, sharedPoints[j].first);
+                        if (dist > maxDist) {
+                            maxDist = dist;
+                            maxI = i;
+                            maxJ = j;
+                        }
+                    }
+                }
+                
+                // 使用相距最远的两对点
+                pointA = sharedPoints[maxI].first;
+                pointB = sharedPoints[maxJ].first;
+            } 
+            // 如果只有一对共有边界点，使用这对点和另一个房间的点
+            else if (sharedPoints.size() == 1) {
+                pointA = sharedPoints[0].first;
+                
+                // 根据距离选择另一个房间的点（与所选的共有点相距最远的点）
+                double maxDist = 0;
+                
+                for (const auto& pointB_pair : roomBPoints) {
+                    double dist = boost::geometry::distance(pointA, pointB_pair.first);
+                    if (dist > maxDist) {
+                        maxDist = dist;
+                        pointB = pointB_pair.first;
+                    }
+                }
+                
+                if (maxDist < 0.01) { // 如果没找到合适的点
+                    for (const auto& pointA_pair : roomAPoints) {
+                        double dist = boost::geometry::distance(pointA, pointA_pair.first);
+                        if (dist > maxDist) {
+                            maxDist = dist;
+                            pointB = pointA_pair.first;
+                        }
+                    }
+                }
+            }
+            // 如果没有共有边界点，使用每个房间距离通道最近的点
+            else {
+                if (!roomAPoints.empty() && !roomBPoints.empty()) {
+                    pointA = roomAPoints[0].first;
+                    pointB = roomBPoints[0].first;
+                }
+                // 如果集合为空，使用通道的线段端点（如果有）
+                else if (!passageEdge->line.cwline.empty()) {
+                    pointA = passageEdge->line.cwline.front();
+                    pointB = passageEdge->line.cwline.back();
+                }
+                // 最后的备用方案，使用通道位置和偏移点
+                else {
+                    pointA = passageEdge->position;
+                    double newX = topo_geometry::getX(passageEdge->position) + 0.01;
+                    double newY = topo_geometry::getY(passageEdge->position) + 0.01;
+                    pointB = topo_geometry::point(newX, newY);
+                }
             }
             
             // 检查端点是否已存在，否则创建新节点
@@ -848,20 +1176,112 @@ void RMG::AreaGraph::exportToOsmAG(const std::string& filename)
                 nodeIdB = nodeIdA;
             }
             
-            // 创建通道way
-            osmFile << "  <way id='" << wayId << "' action='modify' visible='true'>\n";
-            osmFile << "    <nd ref='" << nodeIdA << "' />\n";
-            if (nodeIdA != nodeIdB) { // 只有当nodeIdA和nodeIdB不同时才添加nodeIdB
-                osmFile << "    <nd ref='" << nodeIdB << "' />\n";
+            // 在这里记录通道端点信息，但先不创建通道way
+            PassagePoint ptA, ptB;
+            
+            ptA.point = pointA;
+            ptA.roomA = roomA;
+            ptA.roomB = roomB;
+            ptA.nodeId = nodeIdA;
+            
+            ptB.point = pointB;
+            ptB.roomA = roomA;
+            ptB.roomB = roomB;
+            ptB.nodeId = nodeIdB;
+            
+            passagePoints.push_back(std::make_pair(ptA, ptB));
+        }
+    }
+    
+    // 5. 调用已有的函数优化房间多边形，使通道与房间边界重合
+    optimizeRoomPolygonsForPassages();
+    
+    // 重新生成所有房间节点ID，因为多边形可能已经被优化
+    roomVertexToNodeIds.clear(); // 清除所有现有的房间节点ID映射
+    
+    // 重新遍历所有房间，生成节点ID
+    for (auto roomVtx : originSet) {
+        std::vector<int> nodeIds;
+        
+        // 从房间的多边形中提取所有点
+        for (auto it = roomVtx->polygon.begin(); it != roomVtx->polygon.end(); ++it) {
+            topo_geometry::point point = *it;
+            
+            // 检查这个点是否已经创建过
+            bool pointExists = false;
+            int nodeId = nextId;
+            
+            for (const auto& pair : pointToNodeId) {
+                if (equalLineVertex(pair.first, point)) {
+                    pointExists = true;
+                    nodeId = pair.second;
+                    break;
+                }
             }
             
-            // 添加通道标签
-            osmFile << "    <tag k='name' v='p_" << passageCount++ << "' />\n";
-            osmFile << "    <tag k='osmAG:from' v='room_" << roomA->roomId << "' />\n";
-            osmFile << "    <tag k='osmAG:to' v='room_" << roomB->roomId << "' />\n";
-            osmFile << "    <tag k='osmAG:type' v='passage' />\n";
-            osmFile << "  </way>\n";
+            if (!pointExists) {
+                nodeId = nextId--;
+                pointToNodeId[point] = nodeId;
+                
+                // 转换为经纬度
+                auto latLon = cartesianToLatLon(topo_geometry::getX(point), topo_geometry::getY(point), root_point);
+                
+                // 写入节点
+                osmFile << "  <node id='" << nodeId << "' action='modify' visible='true' lat='" 
+                        << latLon.first << "' lon='" << latLon.second << "' />\n";
+            }
+            
+            nodeIds.push_back(nodeId);
         }
+        
+        roomVertexToNodeIds[roomVtx] = nodeIds;
+    }
+    
+    // 重新输出所有房间way，使用优化后的多边形
+    for (auto roomVtx : originSet) {
+        int wayId = roomToWayId[roomVtx];
+        
+        osmFile << "  <way id='" << wayId << "' action='modify' visible='true'>\n";
+        
+        // 添加所有节点引用
+        auto& nodeIds = roomVertexToNodeIds[roomVtx];
+        for (int nodeId : nodeIds) {
+            osmFile << "    <nd ref='" << nodeId << "' />\n";
+        }
+        // 确保闭合（第一个点和最后一个点相同）
+        if (!nodeIds.empty() && nodeIds.front() != nodeIds.back()) {
+            osmFile << "    <nd ref='" << nodeIds.front() << "' />\n";
+        }
+        
+        // 添加房间标签
+        osmFile << "    <tag k='indoor' v='room' />\n";
+        osmFile << "    <tag k='name' v='room_" << roomVtx->roomId << "' />\n";
+        osmFile << "    <tag k='osmAG:areaType' v='room' />\n";
+        osmFile << "    <tag k='osmAG:type' v='area' />\n";
+        osmFile << "  </way>\n";
+    }
+    
+    // 6. 输出通道way
+    int passageCount = 1;
+    for (const auto& passage : passagePoints) {
+        int wayId = nextWayId--;
+        const PassagePoint& ptA = passage.first;
+        const PassagePoint& ptB = passage.second;
+        
+        osmFile << "  <way id='" << wayId << "' action='modify' visible='true'>\n";
+        osmFile << "    <nd ref='" << ptA.nodeId << "' />\n";
+        
+        // 只有当两个点不同时才添加第二个点
+        if (ptA.nodeId != ptB.nodeId) {
+            osmFile << "    <nd ref='" << ptB.nodeId << "' />\n";
+        }
+        
+        // 添加通道标签
+        osmFile << "    <tag k='name' v='p_" << passageCount++ << "' />\n";
+        osmFile << "    <tag k='osmAG:from' v='room_" << ptA.roomA->roomId << "' />\n";
+        osmFile << "    <tag k='osmAG:to' v='room_" << ptA.roomB->roomId << "' />\n";
+        osmFile << "    <tag k='osmAG:type' v='passage' />\n";
+        osmFile << "  </way>\n";
     }
     
     // 结束文档

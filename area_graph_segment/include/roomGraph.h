@@ -52,6 +52,9 @@ class passageEdge;
         void draw(QImage& image);
         void mergeRoomPolygons();
         
+        // 优化房间多边形，使通道与房间边界重合
+        void optimizeRoomPolygonsForPassages();
+        
         // 导出为osmAG.xml格式
         void exportToOsmAG(const std::string& filename);
 
