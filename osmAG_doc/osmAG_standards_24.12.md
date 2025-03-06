@@ -1,4 +1,5 @@
 ## Indoor osmAG Map Standard
+This is a draft by Jiajie Zhang. Some details still need to be discussed and approved by Prof. Schwertfeger.
 
 This document outlines the specifications for the **osmAG (OpenStreetMap Area Graph)** map format, which is specifically designed for mobile robotics applications. The osmAG format is built upon and extends the **OpenStreetMap (OSM) XML** format to incorporate hierarchical structures, semantic information, and topometric data.
 
@@ -34,7 +35,7 @@ The osmAG format utilizes and extends the OSM XML format with specific enhanceme
         - **`osmAG:type`:** Distinguishes between `area` and `passage` elements.
             - Possible values: area, passage
         - **`osmAG:areatype`:** Specifies the functional classification of an area as either an `inner` area or a `structure` area. Inner areas are further categorized by function: stairs, elevator, or room.
-            - Possible values: room, stairs, elevator
+            - Possible values: room, stairs, elevator, structure
         - **`osmAG:parent`:** References the parent area's identifier, establishing the hierarchical structure. Child areas must be fully contained within their parent's boundaries.
     - Passage-specific Tags:
         - **`osmAG:from` and `osmAG:to`:** Define the connected areas' identifiers. The order is not significant as the Area Graph is undirected.
@@ -52,7 +53,7 @@ The hierarchical organization serves two primary functions:
 
 ### **IV. Rules for Elevators and Stairs**
 
-- Elevators and stairs serve as special vertical connectors between floors. In osmAG, they are implemented as areas with distinctive semantic tags: **`osmAG:areatype` = elevators || stairs**
+- Elevators and stairs serve as special vertical connectors between floors. In osmAG, they are implemented as areas with distinctive semantic tags: **`osmAG:areatype` = elevator || stairs**
 - Elevator Implementation:
     - Each floor contains an area representing the same elevator, with the floor area as its parent.
     - Elevator access points are represented by passages, defined using osmAG:from = elevator area, osmAG:to = connected floor area
@@ -60,7 +61,7 @@ The hierarchical organization serves two primary functions:
 - Stairwell Implementation:
     - Follows the same pattern as elevators, differentiated by the semantic tag: `osmAG:areaType`= stairs
 - Escalator-style Staircases:
-    - Each floor contains an area representing the same escalator-style staircase, parented to the respective floor.
+    - only one area representing the escalator-style staircase, parented to the higher floor.
     - Features two passages representing both ends:
         - First passage: osmAG:from = staircase area, osmAG:to = connected area on floor A
         - Second passage: osmAG:from = staircase area, osmAG:to = connected area on floor B
