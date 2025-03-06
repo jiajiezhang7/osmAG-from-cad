@@ -74,10 +74,14 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # 添加可执行文件
-add_executable(example_segmentation test/example.cpp)
+add_executable(area_graph_segmentation examples/area_graph_segmentation.cpp)
+
+# 添加测试可执行文件
+add_executable(test_area_graph test/test_area_graph.cpp)
 
 # 输出状态消息
 message(STATUS "CGAL libraries: ${CGAL_LIBRARIES}")
 
 # 链接库文件
-target_link_libraries(example_segmentation topo_graph_2d Qt5::Widgets Qt5::Core Qt5::Gui ${CGAL_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(area_graph_segmentation topo_graph_2d Qt5::Widgets Qt5::Core Qt5::Gui ${CGAL_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(test_area_graph topo_graph_2d Qt5::Widgets Qt5::Core Qt5::Gui ${CGAL_LIBRARIES} ${Boost_LIBRARIES})

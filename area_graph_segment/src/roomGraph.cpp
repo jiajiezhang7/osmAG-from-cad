@@ -670,3 +670,201 @@ static bool equalLineVertex(const topo_geometry::point &a, const topo_geometry::
     } else
         return false;
 }
+
+// 将笛卡尔坐标转换为经纬度
+static std::pair<double, double> cartesianToLatLon(double x, double y, const topo_geometry::point& root_point)
+{
+    // 坐标缩放因子(根据实际地图大小调整)
+    const double SCALE_FACTOR = 0.001;
+    
+    // 计算相对于根节点的偏移量，并转换为经纬度
+    double lat = topo_geometry::getY(root_point) + y * SCALE_FACTOR;
+    double lon = topo_geometry::getX(root_point) + x * SCALE_FACTOR;
+    
+    return std::make_pair(lat, lon);
+}
+
+// 将AreaGraph导出为osmAG.xml格式
+void RMG::AreaGraph::exportToOsmAG(const std::string& filename)
+{
+    // 创建XML文档
+    std::ofstream osmFile(filename);
+    osmFile << "<?xml version='1.0' encoding='UTF-8'?>\n";
+    osmFile << "<osm version='0.6' generator='AreaGraph'>\n";
+    
+    // 创建一个负整数ID生成器(避免与OSM实际数据冲突)
+    int nextId = -1;
+    std::map<topo_geometry::point, int, topo_geometry::Smaller> pointToNodeId;
+    
+    // 1. 创建根节点作为坐标原点(0,0)
+    // 直接使用构造函数创建点，不使用setX和setY
+    topo_geometry::point root_point(0.01, 0.01);
+    int rootId = nextId--;
+    osmFile << "  <node id='" << rootId << "' action='modify' visible='true' lat='" 
+            << topo_geometry::getY(root_point) << "' lon='" << topo_geometry::getX(root_point) << "'>\n";
+    osmFile << "    <tag k='name' v='root' />\n";
+    osmFile << "  </node>\n";
+    
+    // 2. 收集所有房间的点
+    std::map<roomVertex*, std::vector<int>> roomVertexToNodeIds;
+    
+    // 2.1 遍历所有房间，创建各个点
+    for (auto roomVtx : originSet) {
+        std::vector<int> nodeIds;
+        
+        // 从房间的多边形中提取所有点
+        for (auto it = roomVtx->polygon.begin(); it != roomVtx->polygon.end(); ++it) {
+            topo_geometry::point point = *it;
+            
+            // 检查这个点是否已经创建过
+            bool pointExists = false;
+            int nodeId = nextId;
+            
+            for (const auto& pair : pointToNodeId) {
+                if (equalLineVertex(pair.first, point)) {
+                    pointExists = true;
+                    nodeId = pair.second;
+                    break;
+                }
+            }
+            
+            if (!pointExists) {
+                nodeId = nextId--;
+                pointToNodeId[point] = nodeId;
+                
+                // 转换为经纬度
+                auto latLon = cartesianToLatLon(topo_geometry::getX(point), topo_geometry::getY(point), root_point);
+                
+                // 写入节点
+                osmFile << "  <node id='" << nodeId << "' action='modify' visible='true' lat='" 
+                        << latLon.first << "' lon='" << latLon.second << "' />\n";
+            }
+            
+            nodeIds.push_back(nodeId);
+        }
+        
+        roomVertexToNodeIds[roomVtx] = nodeIds;
+    }
+    
+    // 3. 创建房间(way)
+    int nextWayId = -1;
+    std::map<roomVertex*, int> roomToWayId;
+    
+    for (auto roomVtx : originSet) {
+        int wayId = nextWayId--;
+        roomToWayId[roomVtx] = wayId;
+        
+        osmFile << "  <way id='" << wayId << "' action='modify' visible='true'>\n";
+        
+        // 添加所有节点引用
+        auto& nodeIds = roomVertexToNodeIds[roomVtx];
+        for (int nodeId : nodeIds) {
+            osmFile << "    <nd ref='" << nodeId << "' />\n";
+        }
+        // 确保闭合（第一个点和最后一个点相同）
+        if (!nodeIds.empty() && nodeIds.front() != nodeIds.back()) {
+            osmFile << "    <nd ref='" << nodeIds.front() << "' />\n";
+        }
+        
+        // 添加房间标签
+        osmFile << "    <tag k='indoor' v='room' />\n";
+        osmFile << "    <tag k='name' v='room_" << roomVtx->roomId << "' />\n";
+        osmFile << "    <tag k='osmAG:areaType' v='room' />\n";
+        osmFile << "    <tag k='osmAG:type' v='area' />\n";
+        osmFile << "  </way>\n";
+    }
+    
+    // 4. 创建通道(passage)
+    int passageCount = 1;
+    for (auto passageEdge : passageEList) {
+        int wayId = nextWayId--;
+        
+        // 只创建连接两个房间的通道
+        if (passageEdge->connectedAreas.size() == 2) {
+            roomVertex* roomA = passageEdge->connectedAreas[0];
+            roomVertex* roomB = passageEdge->connectedAreas[1];
+            
+            // 获取通道线的端点，如果没有具体线，则使用位置点
+            topo_geometry::point pointA, pointB;
+            
+            // 如果有线定义，使用线的端点
+            if (!passageEdge->line.cwline.empty()) {
+                pointA = passageEdge->line.cwline.front();
+                pointB = passageEdge->line.cwline.back();
+            } else {
+                // 如果没有线定义，使用位置点作为端点
+                pointA = passageEdge->position;
+                // 创建一个稍微偏移的点作为第二个端点
+                double newX = topo_geometry::getX(passageEdge->position) + 0.0001;
+                double newY = topo_geometry::getY(passageEdge->position) + 0.0001;
+                topo_geometry::point tmpPoint(newX, newY);
+                pointB = tmpPoint;
+            }
+            
+            // 检查端点是否已存在，否则创建新节点
+            int nodeIdA = -1;
+            int nodeIdB = -1;
+            
+            // 查找点A是否存在
+            bool pointAExists = false;
+            for (const auto& pair : pointToNodeId) {
+                if (equalLineVertex(pair.first, pointA)) {
+                    pointAExists = true;
+                    nodeIdA = pair.second;
+                    break;
+                }
+            }
+            
+            if (!pointAExists) {
+                nodeIdA = nextId--;
+                pointToNodeId[pointA] = nodeIdA;
+                
+                auto latLon = cartesianToLatLon(topo_geometry::getX(pointA), topo_geometry::getY(pointA), root_point);
+                osmFile << "  <node id='" << nodeIdA << "' action='modify' visible='true' lat='" 
+                        << latLon.first << "' lon='" << latLon.second << "' />\n";
+            }
+            
+            // 查找点B是否存在
+            bool pointBExists = false;
+            if (!equalLineVertex(pointA, pointB)) { // 只有当点A和点B不同时才查找点B
+                for (const auto& pair : pointToNodeId) {
+                    if (equalLineVertex(pair.first, pointB)) {
+                        pointBExists = true;
+                        nodeIdB = pair.second;
+                        break;
+                    }
+                }
+                
+                if (!pointBExists) {
+                    nodeIdB = nextId--;
+                    pointToNodeId[pointB] = nodeIdB;
+                    
+                    auto latLon = cartesianToLatLon(topo_geometry::getX(pointB), topo_geometry::getY(pointB), root_point);
+                    osmFile << "  <node id='" << nodeIdB << "' action='modify' visible='true' lat='" 
+                            << latLon.first << "' lon='" << latLon.second << "' />\n";
+                }
+            } else {
+                // 如果点A和点B相同，则使用相同的nodeId
+                nodeIdB = nodeIdA;
+            }
+            
+            // 创建通道way
+            osmFile << "  <way id='" << wayId << "' action='modify' visible='true'>\n";
+            osmFile << "    <nd ref='" << nodeIdA << "' />\n";
+            if (nodeIdA != nodeIdB) { // 只有当nodeIdA和nodeIdB不同时才添加nodeIdB
+                osmFile << "    <nd ref='" << nodeIdB << "' />\n";
+            }
+            
+            // 添加通道标签
+            osmFile << "    <tag k='name' v='p_" << passageCount++ << "' />\n";
+            osmFile << "    <tag k='osmAG:from' v='room_" << roomA->roomId << "' />\n";
+            osmFile << "    <tag k='osmAG:to' v='room_" << roomB->roomId << "' />\n";
+            osmFile << "    <tag k='osmAG:type' v='passage' />\n";
+            osmFile << "  </way>\n";
+        }
+    }
+    
+    // 结束文档
+    osmFile << "</osm>\n";
+    osmFile.close();
+}

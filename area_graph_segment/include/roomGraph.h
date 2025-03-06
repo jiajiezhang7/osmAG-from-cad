@@ -51,6 +51,9 @@ class passageEdge;
         void show();
         void draw(QImage& image);
         void mergeRoomPolygons();
+        
+        // 导出为osmAG.xml格式
+        void exportToOsmAG(const std::string& filename);
 
         //Jiawei: For using passages as edges
         AreaGraph(VoriGraph &voriGraph);
@@ -73,20 +76,29 @@ class passageEdge;
 
 class roomVertex{
     public:
+        // 房间ID
         int roomId;
+        // 房间中心点
         topo_geometry::point center;
+
         topo_geometry::point st;//edge start (only used at roomGraph init, because at very beginning, each roomVertex is a half edge
         topo_geometry::point ed;//edge end (only used at roomGraph init
+
+        // 房间包含的多边形
         std::vector<VoriGraphPolygon*> polygons;
+
+        // 相邻房间
         std::set<roomVertex*> neighbours;
 
         roomVertex* parentV;//if not null, it is a sub-cell
 
+        // 连接此房间的通道
         std::vector<passageEdge *> passages;
     public:
         roomVertex(int roomId, topo_geometry::point loc, topo_geometry::point st, topo_geometry::point ed);
 
         //merge polygon
+        // 房间的边界多边形
         std::list<topo_geometry::point> polygon;
         void mergePolygons();
 
@@ -127,9 +139,16 @@ public:
 };
 class passageEdge{
 public:
+    // 通道位置 
     topo_geometry::point position;
+    
+    // 通道连接的房间
     std::vector<roomVertex*>  connectedAreas;
+
+    // 表示通道是否为连接点
     bool junction;
+
+    // 通道的线段表示
     passageLine line;
 
     passageEdge(topo_geometry::point p, bool j):position(p), junction(j){};

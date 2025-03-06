@@ -1,4 +1,4 @@
-# dxf_layer_info.py
+# dxf_layer_info.py，用以获悉转换后的dxf的图层的信息
 import ezdxf
 import os
 from datetime import datetime
