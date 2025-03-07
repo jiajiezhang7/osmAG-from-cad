@@ -286,7 +286,7 @@ int main(int argc, char *argv[]) {
     
     // 导出为osmAG.xml格式
     std::cout << "正在导出为osmAG.xml格式..." << std::endl;
-    RMGraph.exportToOsmAG("osmAG.osm");
+    RMGraph.exportToOsmAG("osmAG_optimized.osm");
     std::cout << "导出完成，文件保存为：osmAG.osm" << std::endl;
     
     return 0;
