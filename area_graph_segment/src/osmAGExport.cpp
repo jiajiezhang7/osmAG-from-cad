@@ -42,7 +42,7 @@ static std::pair<double, double> cartesianToLatLon(double x, double y, const top
 }
 
 // 优化房间多边形，使通道与房间边界重合
-void RMG::AreaGraph::optimizeRoomPolygonsForPassages()
+void RMG::AreaGraph::optimizeRoomPolygonsForPassages(const std::vector<std::pair<std::pair<topo_geometry::point, topo_geometry::point>, std::pair<roomVertex*, roomVertex*>>>* precomputedPassagePoints)
 {
     // 保存所有通道的端点信息
     struct PassageEndpoints {
@@ -54,132 +54,148 @@ void RMG::AreaGraph::optimizeRoomPolygonsForPassages()
     
     std::vector<PassageEndpoints> allPassages;
     
-    // 第一步：收集所有通道的端点信息
-    for (auto passageEdge : passageEList) {
-        if (passageEdge->connectedAreas.size() == 2) {
-            roomVertex* roomA = passageEdge->connectedAreas[0];
-            roomVertex* roomB = passageEdge->connectedAreas[1];
+    // 如果提供了预计算的通道端点，则直接使用
+    if (precomputedPassagePoints) {
+        // 使用预计算的通道端点
+        for (const auto& passagePoint : *precomputedPassagePoints) {
+            const auto& points = passagePoint.first;
+            const auto& rooms = passagePoint.second;
             
-            // 定义判断两个点是否接近的阈值
-            const double POINT_PROXIMITY_THRESHOLD = 0.5; // 根据实际坐标系调整
-            
-            // 计算通道附近的点
-            const int MAX_POINTS_TO_CONSIDER = 10;
-            std::vector<std::pair<topo_geometry::point, double>> roomAPoints, roomBPoints;
-            
-            // 收集房间A中距离通道最近的点
-            for (const auto& point : roomA->polygon) {
-                double dist = boost::geometry::distance(point, passageEdge->position);
-                roomAPoints.push_back(std::make_pair(point, dist));
-            }
-            
-            // 按距离排序
-            std::sort(roomAPoints.begin(), roomAPoints.end(), 
-                [](const auto& a, const auto& b) { return a.second < b.second; });
-            
-            // 限制为前N个点
-            if (roomAPoints.size() > MAX_POINTS_TO_CONSIDER) {
-                roomAPoints.resize(MAX_POINTS_TO_CONSIDER);
-            }
-            
-            // 收集房间B中距离通道最近的点
-            for (const auto& point : roomB->polygon) {
-                double dist = boost::geometry::distance(point, passageEdge->position);
-                roomBPoints.push_back(std::make_pair(point, dist));
-            }
-            
-            // 按距离排序
-            std::sort(roomBPoints.begin(), roomBPoints.end(), 
-                [](const auto& a, const auto& b) { return a.second < b.second; });
-            
-            // 限制为前N个点
-            if (roomBPoints.size() > MAX_POINTS_TO_CONSIDER) {
-                roomBPoints.resize(MAX_POINTS_TO_CONSIDER);
-            }
-            
-            // 从这些点中找出两个房间的共有边界点（或相距非常近的点）
-            std::vector<std::pair<topo_geometry::point, topo_geometry::point>> sharedPoints;
-            
-            for (const auto& pointA_pair : roomAPoints) {
-                for (const auto& pointB_pair : roomBPoints) {
-                    const auto& pointACandidate = pointA_pair.first;
-                    const auto& pointBCandidate = pointB_pair.first;
+            PassageEndpoints endpoints;
+            endpoints.pointA = points.first;
+            endpoints.pointB = points.second;
+            endpoints.roomA = rooms.first;
+            endpoints.roomB = rooms.second;
+            allPassages.push_back(endpoints);
+        }
+    } else {
+        // 第一步：收集所有通道的端点信息
+        for (auto passageEdge : passageEList) {
+            if (passageEdge->connectedAreas.size() == 2) {
+                roomVertex* roomA = passageEdge->connectedAreas[0];
+                roomVertex* roomB = passageEdge->connectedAreas[1];
+                
+                // 定义判断两个点是否接近的阈值
+                const double POINT_PROXIMITY_THRESHOLD = 0.5; // 根据实际坐标系调整
+                
+                // 计算通道附近的点
+                const int MAX_POINTS_TO_CONSIDER = 10;
+                std::vector<std::pair<topo_geometry::point, double>> roomAPoints, roomBPoints;
+                
+                // 收集房间A中距离通道最近的点
+                for (const auto& point : roomA->polygon) {
+                    double dist = boost::geometry::distance(point, passageEdge->position);
+                    roomAPoints.push_back(std::make_pair(point, dist));
+                }
+                
+                // 按距离排序
+                std::sort(roomAPoints.begin(), roomAPoints.end(), 
+                    [](const auto& a, const auto& b) { return a.second < b.second; });
+                
+                // 限制为前N个点
+                if (roomAPoints.size() > MAX_POINTS_TO_CONSIDER) {
+                    roomAPoints.resize(MAX_POINTS_TO_CONSIDER);
+                }
+                
+                // 收集房间B中距离通道最近的点
+                for (const auto& point : roomB->polygon) {
+                    double dist = boost::geometry::distance(point, passageEdge->position);
+                    roomBPoints.push_back(std::make_pair(point, dist));
+                }
+                
+                // 按距离排序
+                std::sort(roomBPoints.begin(), roomBPoints.end(), 
+                    [](const auto& a, const auto& b) { return a.second < b.second; });
+                
+                // 限制为前N个点
+                if (roomBPoints.size() > MAX_POINTS_TO_CONSIDER) {
+                    roomBPoints.resize(MAX_POINTS_TO_CONSIDER);
+                }
+                
+                // 从这些点中找出两个房间的共有边界点（或相距非常近的点）
+                std::vector<std::pair<topo_geometry::point, topo_geometry::point>> sharedPoints;
+                
+                for (const auto& pointA_pair : roomAPoints) {
+                    for (const auto& pointB_pair : roomBPoints) {
+                        const auto& pointACandidate = pointA_pair.first;
+                        const auto& pointBCandidate = pointB_pair.first;
+                        
+                        double pointDistance = boost::geometry::distance(pointACandidate, pointBCandidate);
+                        if (pointDistance < POINT_PROXIMITY_THRESHOLD) {
+                            sharedPoints.push_back(std::make_pair(pointACandidate, pointBCandidate));
+                        }
+                    }
+                }
+                
+                // 找到两个点作为通道端点
+                topo_geometry::point pointA, pointB;
+                
+                // 如果找到了至少两对共有边界点，选择相距最远的两对
+                if (sharedPoints.size() >= 2) {
+                    double maxDist = 0;
+                    size_t maxI = 0, maxJ = 1;
                     
-                    double pointDistance = boost::geometry::distance(pointACandidate, pointBCandidate);
-                    if (pointDistance < POINT_PROXIMITY_THRESHOLD) {
-                        sharedPoints.push_back(std::make_pair(pointACandidate, pointBCandidate));
-                    }
-                }
-            }
-            
-            // 找到两个点作为通道端点
-            topo_geometry::point pointA, pointB;
-            
-            // 如果找到了至少两对共有边界点，选择相距最远的两对
-            if (sharedPoints.size() >= 2) {
-                double maxDist = 0;
-                size_t maxI = 0, maxJ = 1;
-                
-                for (size_t i = 0; i < sharedPoints.size(); ++i) {
-                    for (size_t j = i + 1; j < sharedPoints.size(); ++j) {
-                        double dist = boost::geometry::distance(sharedPoints[i].first, sharedPoints[j].first);
-                        if (dist > maxDist) {
-                            maxDist = dist;
-                            maxI = i;
-                            maxJ = j;
+                    for (size_t i = 0; i < sharedPoints.size(); ++i) {
+                        for (size_t j = i + 1; j < sharedPoints.size(); ++j) {
+                            double dist = boost::geometry::distance(sharedPoints[i].first, sharedPoints[j].first);
+                            if (dist > maxDist) {
+                                maxDist = dist;
+                                maxI = i;
+                                maxJ = j;
+                            }
                         }
                     }
-                }
-                
-                pointA = sharedPoints[maxI].first;
-                pointB = sharedPoints[maxJ].first;
-            } 
-            else if (sharedPoints.size() == 1) {
-                pointA = sharedPoints[0].first;
-                
-                double maxDist = 0;
-                for (const auto& pointB_pair : roomBPoints) {
-                    double dist = boost::geometry::distance(pointA, pointB_pair.first);
-                    if (dist > maxDist) {
-                        maxDist = dist;
-                        pointB = pointB_pair.first;
-                    }
-                }
-                
-                if (maxDist < 0.01) {
-                    for (const auto& pointA_pair : roomAPoints) {
-                        double dist = boost::geometry::distance(pointA, pointA_pair.first);
+                    
+                    pointA = sharedPoints[maxI].first;
+                    pointB = sharedPoints[maxJ].first;
+                } 
+                else if (sharedPoints.size() == 1) {
+                    pointA = sharedPoints[0].first;
+                    
+                    double maxDist = 0;
+                    for (const auto& pointB_pair : roomBPoints) {
+                        double dist = boost::geometry::distance(pointA, pointB_pair.first);
                         if (dist > maxDist) {
                             maxDist = dist;
-                            pointB = pointA_pair.first;
+                            pointB = pointB_pair.first;
                         }
                     }
-                }
-            }
-            else {
-                if (!roomAPoints.empty() && !roomBPoints.empty()) {
-                    pointA = roomAPoints[0].first;
-                    pointB = roomBPoints[0].first;
-                }
-                else if (!passageEdge->line.cwline.empty()) {
-                    pointA = passageEdge->line.cwline.front();
-                    pointB = passageEdge->line.cwline.back();
+                    
+                    if (maxDist < 0.01) {
+                        for (const auto& pointA_pair : roomAPoints) {
+                            double dist = boost::geometry::distance(pointA, pointA_pair.first);
+                            if (dist > maxDist) {
+                                maxDist = dist;
+                                pointB = pointA_pair.first;
+                            }
+                        }
+                    }
                 }
                 else {
-                    pointA = passageEdge->position;
-                    double newX = topo_geometry::getX(passageEdge->position) + 0.01;
-                    double newY = topo_geometry::getY(passageEdge->position) + 0.01;
-                    pointB = topo_geometry::point(newX, newY);
+                    if (!roomAPoints.empty() && !roomBPoints.empty()) {
+                        pointA = roomAPoints[0].first;
+                        pointB = roomBPoints[0].first;
+                    }
+                    else if (!passageEdge->line.cwline.empty()) {
+                        pointA = passageEdge->line.cwline.front();
+                        pointB = passageEdge->line.cwline.back();
+                    }
+                    else {
+                        pointA = passageEdge->position;
+                        double newX = topo_geometry::getX(passageEdge->position) + 0.01;
+                        double newY = topo_geometry::getY(passageEdge->position) + 0.01;
+                        pointB = topo_geometry::point(newX, newY);
+                    }
                 }
+                
+                // 收集通道端点信息
+                PassageEndpoints endpoints;
+                endpoints.pointA = pointA;
+                endpoints.pointB = pointB;
+                endpoints.roomA = roomA;
+                endpoints.roomB = roomB;
+                allPassages.push_back(endpoints);
             }
-            
-            // 收集通道端点信息
-            PassageEndpoints endpoints;
-            endpoints.pointA = pointA;
-            endpoints.pointB = pointB;
-            endpoints.roomA = roomA;
-            endpoints.roomB = roomB;
-            allPassages.push_back(endpoints);
         }
     }
     
@@ -590,12 +606,9 @@ void RMG::AreaGraph::exportToOsmAG(const std::string& filename)
     // 去除重复多边形
     removeDuplicatePolygons();
     std::cout << "去重后房间数量: " << originSet.size() << std::endl;
-    
-    // 5. 调用已有的函数优化房间多边形，使通道与房间边界重合
-    optimizeRoomPolygonsForPassages();
-    
-    // 输出优化后的房间信息
-    std::cout << "优化后房间数量: " << originSet.size() << std::endl;
+
+    // 用于收集通道端点信息，后续传给优化函数
+    std::vector<std::pair<std::pair<topo_geometry::point, topo_geometry::point>, std::pair<roomVertex*, roomVertex*>>> passagePointsForOptimization;
     
     // 创建XML文档
     std::ofstream osmFile(filename);
@@ -826,10 +839,33 @@ void RMG::AreaGraph::exportToOsmAG(const std::string& filename)
             ptB.nodeId = nodeIdB;
             
             passagePoints.push_back(std::make_pair(ptA, ptB));
+            
+            // 同时收集端点信息用于多边形优化
+            passagePointsForOptimization.push_back(std::make_pair(
+                std::make_pair(pointA, pointB),
+                std::make_pair(roomA, roomB)));
+            
         }
     }
     
     // 遍历所有通道，找出并记录它们的端点
+    
+    // 在这里调用优化函数，传入预计算的通道端点信息
+    optimizeRoomPolygonsForPassages(&passagePointsForOptimization);
+    
+    // 输出优化后的房间信息
+    std::cout << "优化后房间数量: " << originSet.size() << std::endl;
+    
+    // 收集需要保留的通道端点
+    std::vector<topo_geometry::point> preservePoints;
+    for (const auto& passage : passagePointsForOptimization) {
+        preservePoints.push_back(passage.first.first);  // 第一个端点
+        preservePoints.push_back(passage.first.second); // 第二个端点
+    }
+    
+    // 在通道端点优化后进行多边形简化，保留通道端点
+    simplifyPolygons(0.02, &preservePoints);
+    std::cout << "多边形简化完成，已保留" << preservePoints.size() << "个通道端点" << std::endl;
     
     // 遍历所有房间，生成节点ID（使用优化后的多边形）
     for (auto roomVtx : originSet) {
@@ -927,4 +963,143 @@ void RMG::AreaGraph::exportToOsmAG(const std::string& filename)
     // 结束文档
     osmFile << "</osm>\n";
     osmFile.close();
+}
+
+// 计算点到线段的距离
+double RMG::AreaGraph::pointToLineDistance(const topo_geometry::point& p, const topo_geometry::point& lineStart, const topo_geometry::point& lineEnd) {
+    // 如果线段实际上是一个点，直接返回点到这个点的距离
+    if (equalLineVertex(lineStart, lineEnd)) {
+        return boost::geometry::distance(p, lineStart);
+    }
+    
+    // 计算向量
+    double x1 = topo_geometry::getX(lineStart);
+    double y1 = topo_geometry::getY(lineStart);
+    double x2 = topo_geometry::getX(lineEnd);
+    double y2 = topo_geometry::getY(lineEnd);
+    double x0 = topo_geometry::getX(p);
+    double y0 = topo_geometry::getY(p);
+    
+    // 计算线段长度的平方
+    double lineLength2 = (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1);
+    
+    // 计算投影比例
+    double t = ((x0 - x1) * (x2 - x1) + (y0 - y1) * (y2 - y1)) / lineLength2;
+    
+    // 如果投影在线段外，返回点到线段端点的最小距离
+    if (t < 0.0) {
+        return boost::geometry::distance(p, lineStart);
+    }
+    if (t > 1.0) {
+        return boost::geometry::distance(p, lineEnd);
+    }
+    
+    // 计算投影点
+    double projX = x1 + t * (x2 - x1);
+    double projY = y1 + t * (y2 - y1);
+    topo_geometry::point projPoint(projX, projY);
+    
+    // 返回点到投影点的距离
+    return boost::geometry::distance(p, projPoint);
+}
+
+// Douglas-Peucker算法递归简化多边形一部分
+static void douglasPeuckerRecursive(const std::vector<topo_geometry::point>& points, int start, int end, 
+                                 double epsilon, std::vector<bool>& keepPoint, 
+                                 RMG::AreaGraph* areaGraph) {
+    if (end - start <= 1) {
+        return;
+    }
+    
+    // 找出最远的点
+    double maxDistance = 0.0;
+    int furthestIndex = start;
+    
+    for (int i = start + 1; i < end; ++i) {
+        double distance = areaGraph->pointToLineDistance(points[i], points[start], points[end]);
+        if (distance > maxDistance) {
+            maxDistance = distance;
+            furthestIndex = i;
+        }
+    }
+    
+    // 如果最远的点距离超过阈值，保留它并递归简化两侧
+    if (maxDistance > epsilon) {
+        keepPoint[furthestIndex] = true;
+        douglasPeuckerRecursive(points, start, furthestIndex, epsilon, keepPoint, areaGraph);
+        douglasPeuckerRecursive(points, furthestIndex, end, epsilon, keepPoint, areaGraph);
+    }
+}
+
+// 简化单个多边形
+std::list<topo_geometry::point> RMG::AreaGraph::simplifyPolygon(const std::list<topo_geometry::point>& polygon, double epsilon, const std::vector<topo_geometry::point>* preservePoints) {
+    if (polygon.size() <= 3) {
+        return polygon; // 不能再简化
+    }
+    
+    // 转换为向量便于索引访问
+    std::vector<topo_geometry::point> points(polygon.begin(), polygon.end());
+    int n = points.size();
+    
+    // 初始化保留标记，默认只保留第一个和最后一个点
+    std::vector<bool> keepPoint(n, false);
+    keepPoint[0] = true;
+    keepPoint[n-1] = true;
+    
+    // 标记需要保留的特殊点（如通道端点）
+    if (preservePoints != nullptr && !preservePoints->empty()) {
+        const double PRESERVE_THRESHOLD = 1e-6; // 保留点判断阈值
+        
+        for (int i = 0; i < n; ++i) {
+            for (const auto& preservePoint : *preservePoints) {
+                if (equalLineVertex(points[i], preservePoint) || 
+                    boost::geometry::distance(points[i], preservePoint) < PRESERVE_THRESHOLD) {
+                    keepPoint[i] = true;
+                    break;
+                }
+            }
+        }
+    }
+    
+    // 应用Douglas-Peucker算法
+    douglasPeuckerRecursive(points, 0, n-1, epsilon, keepPoint, this);
+    
+    // 根据标记建立简化后的多边形
+    std::list<topo_geometry::point> simplifiedPolygon;
+    for (int i = 0; i < n; ++i) {
+        if (keepPoint[i]) {
+            simplifiedPolygon.push_back(points[i]);
+        }
+    }
+    
+    // 确保多边形闭合
+    if (!simplifiedPolygon.empty() && !equalLineVertex(simplifiedPolygon.front(), simplifiedPolygon.back())) {
+        simplifiedPolygon.push_back(simplifiedPolygon.front());
+    }
+    
+    return simplifiedPolygon;
+}
+
+// 简化所有房间多边形
+void RMG::AreaGraph::simplifyPolygons(double epsilon, const std::vector<topo_geometry::point>* preservePoints) {
+    // 输出简化前的点数量统计
+    int totalPointsBefore = 0;
+    for (auto roomVtx : originSet) {
+        totalPointsBefore += roomVtx->polygon.size();
+    }
+    
+    // 对每个房间多边形进行简化
+    for (auto roomVtx : originSet) {
+        roomVtx->polygon = simplifyPolygon(roomVtx->polygon, epsilon, preservePoints);
+    }
+    
+    // 输出简化后的点数量统计
+    int totalPointsAfter = 0;
+    for (auto roomVtx : originSet) {
+        totalPointsAfter += roomVtx->polygon.size();
+    }
+    
+    std::cout << "多边形简化: 原有" << totalPointsBefore << "个点，简化后" << totalPointsAfter 
+              << "个点，减少" << (totalPointsBefore - totalPointsAfter) << "个点 (" 
+              << (100.0 * (totalPointsBefore - totalPointsAfter) / totalPointsBefore) << "%)" << std::endl;
 }

@@ -53,13 +53,19 @@ class passageEdge;
         void mergeRoomPolygons();
         
         // 优化房间多边形，使通道与房间边界重合
-        void optimizeRoomPolygonsForPassages();
+        // 可选参数：已计算好的通道端点信息，避免重复计算
+        void optimizeRoomPolygonsForPassages(const std::vector<std::pair<std::pair<topo_geometry::point, topo_geometry::point>, std::pair<roomVertex*, roomVertex*>>>* precomputedPassagePoints = nullptr);
         
         // 去除originSet中形状相同的多边形
         void removeDuplicatePolygons();
         size_t calculatePolygonHash(const std::list<topo_geometry::point>& polygon);
         bool arePolygonsEqual(const std::list<topo_geometry::point>& poly1, const std::list<topo_geometry::point>& poly2);
         void transferPassages(roomVertex* source, roomVertex* target);
+        
+        // 简化多边形，减少直线上的冗余点
+        void simplifyPolygons(double epsilon = 0.05, const std::vector<topo_geometry::point>* preservePoints = nullptr);
+        std::list<topo_geometry::point> simplifyPolygon(const std::list<topo_geometry::point>& polygon, double epsilon, const std::vector<topo_geometry::point>* preservePoints = nullptr);
+        double pointToLineDistance(const topo_geometry::point& p, const topo_geometry::point& lineStart, const topo_geometry::point& lineEnd);
         
         // 导出为osmAG.xml格式
         void exportToOsmAG(const std::string& filename);
