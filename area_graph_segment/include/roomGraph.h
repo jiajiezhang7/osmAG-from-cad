@@ -67,6 +67,13 @@ class passageEdge;
         std::list<topo_geometry::point> simplifyPolygon(const std::list<topo_geometry::point>& polygon, double epsilon, const std::vector<topo_geometry::point>* preservePoints = nullptr);
         double pointToLineDistance(const topo_geometry::point& p, const topo_geometry::point& lineStart, const topo_geometry::point& lineEnd);
         
+        // 移除多边形中的“毛刺”
+        void removeSpikesFromPolygons(double angleThreshold = 30.0, double distanceThreshold = 0.05, 
+                                    const std::vector<topo_geometry::point>* preservePoints = nullptr);
+        std::list<topo_geometry::point> removeSpikesFromPolygon(const std::list<topo_geometry::point>& polygon, 
+                                                            double angleThreshold, double distanceThreshold,
+                                                            const std::vector<topo_geometry::point>* preservePoints = nullptr);
+        
         // 导出为osmAG.xml格式
         void exportToOsmAG(const std::string& filename);
 
