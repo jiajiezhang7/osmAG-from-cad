@@ -15,6 +15,19 @@ static bool equalLineVertex(const topo_geometry::point &a, const topo_geometry::
 }
 
 
+// 计算多边形面积
+static double calc_poly_area(std::list<topo_geometry::point> &polygon) {
+    double area = 0;
+    std::list<topo_geometry::point>::iterator itj = polygon.end();
+    itj--;
+    for (std::list<topo_geometry::point>::iterator it = polygon.begin(); it != polygon.end(); it++) {
+        area += ((topo_geometry::getX(*itj) * topo_geometry::getY(*it)) -
+                 (topo_geometry::getY(*itj) * topo_geometry::getX(*it)));
+        itj = it;
+    }
+    return std::abs(area / 2.0);
+}
+
 // 将笛卡尔坐标转换为经纬度
 static std::pair<double, double> cartesianToLatLon(double x, double y, const topo_geometry::point& root_point)
 {
@@ -327,42 +340,262 @@ void RMG::AreaGraph::optimizeRoomPolygonsForPassages()
     }
 }
 
+// 去除originSet中形状相同的多边形
+void RMG::AreaGraph::removeDuplicatePolygons() {
+    if (originSet.empty()) {
+        return;
+    }
+    
+    // 使用哈希表存储多边形的哈希值和对应的roomVertex
+    // 哈希值基于多边形的形状，而不是roomId
+    std::map<size_t, std::vector<roomVertex*>> polygonHash;
+    
+    // 计算每个多边形的哈希值
+    for (auto roomVtx : originSet) {
+        // 如果多边形为空，跳过
+        if (roomVtx->polygon.empty()) {
+            continue;
+        }
+        
+        // 计算多边形的哈希值
+        size_t hash = calculatePolygonHash(roomVtx->polygon);
+        
+        // 将roomVertex添加到对应哈希值的列表中
+        polygonHash[hash].push_back(roomVtx);
+    }
+    
+    // 标记要删除的roomVertex
+    std::vector<roomVertex*> toRemove;
+    
+    // 处理每个哈希值对应的roomVertex列表
+    for (auto& pair : polygonHash) {
+        auto& vertices = pair.second;
+        
+        // 如果只有一个roomVertex，不需要处理
+        if (vertices.size() <= 1) {
+            continue;
+        }
+        
+        // 验证多边形是否真的相同（哈希碰撞检查）
+        for (size_t i = 0; i < vertices.size(); ++i) {
+            for (size_t j = i + 1; j < vertices.size(); ++j) {
+                if (arePolygonsEqual(vertices[i]->polygon, vertices[j]->polygon)) {
+                    // 确认多边形相同，保留roomId较小的那个
+                    if (vertices[i]->roomId > vertices[j]->roomId) {
+                        // 将vertices[i]标记为要删除
+                        toRemove.push_back(vertices[i]);
+                        
+                        // 将vertices[i]的通道转移给vertices[j]
+                        transferPassages(vertices[i], vertices[j]);
+                        break;
+                    } else {
+                        // 将vertices[j]标记为要删除
+                        toRemove.push_back(vertices[j]);
+                        
+                        // 将vertices[j]的通道转移给vertices[i]
+                        transferPassages(vertices[j], vertices[i]);
+                    }
+                }
+            }
+        }
+    }
+    
+    // 从originSet中删除标记的roomVertex
+    for (auto roomVtx : toRemove) {
+        originSet.erase(std::remove(originSet.begin(), originSet.end(), roomVtx), originSet.end());
+        delete roomVtx; // 释放内存
+    }
+    
+    std::cout << "已删除 " << toRemove.size() << " 个重复多边形" << std::endl;
+}
+
+// 计算多边形的哈希值
+size_t RMG::AreaGraph::calculatePolygonHash(const std::list<topo_geometry::point>& polygon) {
+    // 计算多边形的质心
+    double centroidX = 0, centroidY = 0;
+    int count = 0;
+    
+    for (const auto& point : polygon) {
+        centroidX += topo_geometry::getX(point);
+        centroidY += topo_geometry::getY(point);
+        count++;
+    }
+    
+    if (count > 0) {
+        centroidX /= count;
+        centroidY /= count;
+    }
+    
+    // 计算多边形的面积和周长
+    double area = calc_poly_area(const_cast<std::list<topo_geometry::point>&>(polygon));
+    double perimeter = 0;
+    
+    auto it = polygon.begin();
+    auto prevIt = it;
+    ++it;
+    
+    while (it != polygon.end()) {
+        perimeter += boost::geometry::distance(*prevIt, *it);
+        prevIt = it;
+        ++it;
+    }
+    
+    // 如果多边形不闭合，添加最后一条边的长度
+    if (!polygon.empty() && !equalLineVertex(polygon.front(), polygon.back())) {
+        perimeter += boost::geometry::distance(polygon.back(), polygon.front());
+    }
+    
+    // 计算顶点数量
+    size_t vertexCount = polygon.size();
+    
+    // 组合这些特征计算哈希值
+    std::hash<double> doubleHasher;
+    std::hash<size_t> sizeHasher;
+    
+    size_t hash = 17;
+    hash = hash * 31 + doubleHasher(area);
+    hash = hash * 31 + doubleHasher(perimeter);
+    hash = hash * 31 + doubleHasher(centroidX);
+    hash = hash * 31 + doubleHasher(centroidY);
+    hash = hash * 31 + sizeHasher(vertexCount);
+    
+    return hash;
+}
+
+// 判断两个多边形是否相同
+bool RMG::AreaGraph::arePolygonsEqual(const std::list<topo_geometry::point>& poly1, const std::list<topo_geometry::point>& poly2) {
+    // 如果顶点数量不同，多边形不同
+    if (poly1.size() != poly2.size()) {
+        return false;
+    }
+    
+    // 如果多边形为空，认为相同
+    if (poly1.empty() && poly2.empty()) {
+        return true;
+    }
+    
+    // 计算多边形的面积和周长
+    double area1 = calc_poly_area(const_cast<std::list<topo_geometry::point>&>(poly1));
+    double area2 = calc_poly_area(const_cast<std::list<topo_geometry::point>&>(poly2));
+    
+    // 如果面积差异过大，多边形不同
+    const double AREA_THRESHOLD = 0.01;
+    if (std::abs(area1 - area2) > AREA_THRESHOLD) {
+        return false;
+    }
+    
+    // 计算每个顶点到质心的距离，并按距离排序
+    std::vector<double> distances1, distances2;
+    
+    // 计算poly1的质心
+    double centroidX1 = 0, centroidY1 = 0;
+    for (const auto& point : poly1) {
+        centroidX1 += topo_geometry::getX(point);
+        centroidY1 += topo_geometry::getY(point);
+    }
+    centroidX1 /= poly1.size();
+    centroidY1 /= poly1.size();
+    topo_geometry::point centroid1(centroidX1, centroidY1);
+    
+    // 计算poly2的质心
+    double centroidX2 = 0, centroidY2 = 0;
+    for (const auto& point : poly2) {
+        centroidX2 += topo_geometry::getX(point);
+        centroidY2 += topo_geometry::getY(point);
+    }
+    centroidX2 /= poly2.size();
+    centroidY2 /= poly2.size();
+    topo_geometry::point centroid2(centroidX2, centroidY2);
+    
+    // 计算每个顶点到质心的距离
+    for (const auto& point : poly1) {
+        distances1.push_back(boost::geometry::distance(point, centroid1));
+    }
+    
+    for (const auto& point : poly2) {
+        distances2.push_back(boost::geometry::distance(point, centroid2));
+    }
+    
+    // 排序距离
+    std::sort(distances1.begin(), distances1.end());
+    std::sort(distances2.begin(), distances2.end());
+    
+    // 比较排序后的距离
+    const double DISTANCE_THRESHOLD = 0.01;
+    for (size_t i = 0; i < distances1.size(); ++i) {
+        if (std::abs(distances1[i] - distances2[i]) > DISTANCE_THRESHOLD) {
+            return false;
+        }
+    }
+    
+    // 如果所有检查都通过，认为多边形相同
+    return true;
+}
+
+// 将一个roomVertex的通道转移给另一个roomVertex
+void RMG::AreaGraph::transferPassages(roomVertex* source, roomVertex* target) {
+    // 遍历source的所有通道
+    for (auto passage : source->passages) {
+        // 检查target是否已经有这个通道
+        bool passageExists = false;
+        for (auto targetPassage : target->passages) {
+            if (targetPassage == passage) {
+                passageExists = true;
+                break;
+            }
+        }
+        
+        // 如果target没有这个通道，添加它
+        if (!passageExists) {
+            target->passages.push_back(passage);
+        }
+        
+        // 在通道的connectedAreas中，将source替换为target
+        for (size_t i = 0; i < passage->connectedAreas.size(); ++i) {
+            if (passage->connectedAreas[i] == source) {
+                // 检查target是否已经在connectedAreas中
+                bool targetExists = false;
+                for (auto area : passage->connectedAreas) {
+                    if (area == target) {
+                        targetExists = true;
+                        break;
+                    }
+                }
+                
+                if (targetExists) {
+                    // 如果target已经存在，删除source
+                    passage->connectedAreas.erase(passage->connectedAreas.begin() + i);
+                    i--; // 调整索引
+                } else {
+                    // 否则，将source替换为target
+                    passage->connectedAreas[i] = target;
+                }
+            }
+        }
+    }
+    
+    // 清空source的通道列表，防止删除时出现问题
+    source->passages.clear();
+}
+
 // 将AreaGraph导出为osmAG.xml格式
 void RMG::AreaGraph::exportToOsmAG(const std::string& filename)
 {
     // 添加调试信息
     std::cout << "开始导出AreaGraph到" << filename << std::endl;
     
-    // 检查originSet中是否有重复的房间ID
-    std::map<int, int> roomIdCount;
-    for (auto roomVtx : originSet) {
-        roomIdCount[roomVtx->roomId]++;
-    }
-    
-    for (const auto& pair : roomIdCount) {
-        if (pair.second > 1) {
-            std::cout << "警告: 房间ID " << pair.first << " 在originSet中出现了 " << pair.second << " 次!" << std::endl;
-        }
-    }
-    
-    // 5. 调用已有的函数优化房间多边形，使通道与房间边界重合
     // 输出优化前的房间信息
     std::cout << "优化前房间数量: " << originSet.size() << std::endl;
-    for (auto roomVtx : originSet) {
-        if (roomVtx->roomId == 25 || roomVtx->roomId == 3) {
-            std::cout << "优化前房间ID: " << roomVtx->roomId << ", 多边形点数: " << roomVtx->polygon.size() << std::endl;
-        }
-    }
     
+    // 去除重复多边形
+    removeDuplicatePolygons();
+    std::cout << "去重后房间数量: " << originSet.size() << std::endl;
+    
+    // 5. 调用已有的函数优化房间多边形，使通道与房间边界重合
     optimizeRoomPolygonsForPassages();
     
     // 输出优化后的房间信息
     std::cout << "优化后房间数量: " << originSet.size() << std::endl;
-    for (auto roomVtx : originSet) {
-        if (roomVtx->roomId == 25 || roomVtx->roomId == 3) {
-            std::cout << "优化后房间ID: " << roomVtx->roomId << ", 多边形点数: " << roomVtx->polygon.size() << std::endl;
-        }
-    }
     
     // 创建XML文档
     std::ofstream osmFile(filename);
@@ -640,24 +873,8 @@ void RMG::AreaGraph::exportToOsmAG(const std::string& filename)
     // 创建一个集合来跟踪已经处理过的房间ID
     std::set<int> processedRoomIds;
     
+    // TODO: 在这里 originSet中已经有了“重复“”的多边形
     for (auto roomVtx : originSet) {
-        // 调试输出，跟踪room_25和room_3
-        if (roomVtx->roomId == 25 || roomVtx->roomId == 3) {
-            std::cout << "正在处理房间ID: " << roomVtx->roomId << ", 多边形点数: " << roomVtx->polygon.size() << std::endl;
-            
-            // 输出多边形的点坐标，便于调试
-            std::cout << "多边形坐标: ";
-            for (const auto& point : roomVtx->polygon) {
-                std::cout << "(" << topo_geometry::getX(point) << "," << topo_geometry::getY(point) << ") ";
-            }
-            std::cout << std::endl;
-        }
-        
-        // 检查这个房间ID是否已经处理过
-        if (processedRoomIds.find(roomVtx->roomId) != processedRoomIds.end()) {
-            std::cout << "警告: 房间ID " << roomVtx->roomId << " 重复出现在originSet中!" << std::endl;
-            continue; // 跳过重复的房间ID
-        }
         
         // 记录这个房间ID已经被处理
         processedRoomIds.insert(roomVtx->roomId);
@@ -681,7 +898,6 @@ void RMG::AreaGraph::exportToOsmAG(const std::string& filename)
         osmFile << "    <tag k='name' v='room_" << roomVtx->roomId << "' />\n";
         osmFile << "    <tag k='osmAG:areaType' v='room' />\n";
         osmFile << "    <tag k='osmAG:type' v='area' />\n";
-        osmFile << "    <tag k='osmAG:optimized' v='true' />\n"; // 添加标记表明这是优化后的多边形
         osmFile << "  </way>\n";
     }
     
