@@ -867,6 +867,10 @@ void RMG::AreaGraph::exportToOsmAG(const std::string& filename)
     simplifyPolygons(0.02, &preservePoints);
     std::cout << "多边形简化完成，已保留" << preservePoints.size() << "个通道端点" << std::endl;
     
+    // 移除房间多边形中的“毛刺”和头角
+    removeSpikesFromPolygons(15.0, 0.15, &preservePoints); // 使用更激进的参数增强毛刺去除效果
+    std::cout << "多边形平滑完成，已移除毛刺和尖角" << std::endl;
+    
     // 遍历所有房间，生成节点ID（使用优化后的多边形）
     for (auto roomVtx : originSet) {
         std::vector<int> nodeIds;
@@ -1102,4 +1106,183 @@ void RMG::AreaGraph::simplifyPolygons(double epsilon, const std::vector<topo_geo
     std::cout << "多边形简化: 原有" << totalPointsBefore << "个点，简化后" << totalPointsAfter 
               << "个点，减少" << (totalPointsBefore - totalPointsAfter) << "个点 (" 
               << (100.0 * (totalPointsBefore - totalPointsAfter) / totalPointsBefore) << "%)" << std::endl;
+}
+
+/**
+ * 移除多边形中的"毛刺"
+ * 
+ * 参数调整指南:
+ * 1. 角度阈值(angleThreshold)
+ *    - 默认值: 15.0
+ *    - 范围: 5.0-30.0
+ *    - 越小越激进，会移除更多与90度偏差小的角
+ *    - 极端值: 8.0 (非常激进)
+ * 
+ * 2. 距离阈值(distanceThreshold)
+ *    - 默认值: 0.15
+ *    - 范围: 0.05-0.3
+ *    - 越大越激进，会移除更多距离直线较远的点
+ *    - 极端值: 0.3 (非常激进)
+ * 
+ * 3. 针对特定毛刺类型的调整:
+ *    - 针对尖角: 在代码中修改 "angle < 30.0" 为更大的值(如 40.0)
+ *    - 针对钝角: 在代码中修改 "angle > 150.0" 为更小的值(如 140.0)
+ *    - 针对长毛刺: 在代码中增大 "(distance / minVectorLen) < 0.1" 中的比例值
+ * 
+ * 4. 极端情况下的组合参数:
+ *    - 最激进: angleThreshold=8.0, distanceThreshold=0.3
+ *    - 中等: angleThreshold=15.0, distanceThreshold=0.15
+ *    - 保守: angleThreshold=30.0, distanceThreshold=0.05
+ * 
+ * 5. 对于特别顶固的毛刺，可以考虑多次迭代应用算法
+ * 
+ * 注意: 参数过于激进可能会过度简化多边形，导致有意义的形状丢失
+ */
+void RMG::AreaGraph::removeSpikesFromPolygons(double angleThreshold, double distanceThreshold, 
+                                          const std::vector<topo_geometry::point>* preservePoints) {
+    // 输出处理前的点数量统计
+    int totalPointsBefore = 0;
+    for (auto roomVtx : originSet) {
+        totalPointsBefore += roomVtx->polygon.size();
+    }
+    
+    // 对每个房间多边形进行处理
+    for (auto roomVtx : originSet) {
+        roomVtx->polygon = removeSpikesFromPolygon(roomVtx->polygon, angleThreshold, distanceThreshold, preservePoints);
+    }
+    
+    // 输出处理后的点数量统计
+    int totalPointsAfter = 0;
+    for (auto roomVtx : originSet) {
+        totalPointsAfter += roomVtx->polygon.size();
+    }
+    
+    std::cout << "多边形毛刺移除: 原有" << totalPointsBefore << "个点，处理后" << totalPointsAfter 
+              << "个点，减少" << (totalPointsBefore - totalPointsAfter) << "个点 (" 
+              << (100.0 * (totalPointsBefore - totalPointsAfter) / totalPointsBefore) << "%)" << std::endl;
+}
+
+// 移除单个多边形中的"毛刺"
+std::list<topo_geometry::point> RMG::AreaGraph::removeSpikesFromPolygon(
+                            const std::list<topo_geometry::point>& polygon, 
+                            double angleThreshold, double distanceThreshold,
+                            const std::vector<topo_geometry::point>* preservePoints) {
+    if (polygon.size() <= 3) {
+        return polygon; // 不能再简化
+    }
+    
+    // 将多边形转换为向量便于索引访问
+    std::vector<topo_geometry::point> points(polygon.begin(), polygon.end());
+    int n = points.size();
+    
+    // 标记需要保留的点
+    std::vector<bool> keepPoint(n, true);
+    
+    // 处理保留点列表
+    std::vector<int> preserveIndices;
+    if (preservePoints != nullptr && !preservePoints->empty()) {
+        const double PRESERVE_THRESHOLD = 1e-6; // 保留点判断阈值
+        
+        for (int i = 0; i < n; ++i) {
+            for (const auto& preservePoint : *preservePoints) {
+                if (equalLineVertex(points[i], preservePoint) || 
+                    boost::geometry::distance(points[i], preservePoint) < PRESERVE_THRESHOLD) {
+                    preserveIndices.push_back(i);
+                    break;
+                }
+            }
+        }
+    }
+    
+    // 使用cmath中的M_PI常量
+    #include <cmath>
+    
+    // 遍历所有连续的三个点
+    for (int i = 0; i < n; ++i) {
+        // 确保索引在范围内并形成循环
+        int prev = (i + n - 1) % n;
+        int curr = i;
+        int next = (i + 1) % n;
+        
+        // 跳过保留点
+        bool isPreservePoint = false;
+        for (int idx : preserveIndices) {
+            if (curr == idx) {
+                isPreservePoint = true;
+                break;
+            }
+        }
+        if (isPreservePoint) continue;
+        
+        // 计算向量
+        double ax = topo_geometry::getX(points[prev]) - topo_geometry::getX(points[curr]);
+        double ay = topo_geometry::getY(points[prev]) - topo_geometry::getY(points[curr]);
+        double bx = topo_geometry::getX(points[next]) - topo_geometry::getX(points[curr]);
+        double by = topo_geometry::getY(points[next]) - topo_geometry::getY(points[curr]);
+        
+        // 计算向量长度（即点之间的距离）
+        double lenA = std::sqrt(ax*ax + ay*ay);
+        double lenB = std::sqrt(bx*bx + by*by);
+        
+        // 如果任一距离为0，跳过
+        if (lenA < 1e-6 || lenB < 1e-6) continue;
+        
+        // 计算归一化向量
+        ax /= lenA; ay /= lenA;
+        bx /= lenB; by /= lenB;
+        
+        // 计算点积 (cos theta)
+        double dotProduct = ax*bx + ay*by;
+        
+        // 限制在[-1, 1]范围内，避免浮点误差
+        dotProduct = std::max(-1.0, std::min(1.0, dotProduct));
+        
+        // 计算角度（弧度），然后转换为度
+        double angle = std::acos(dotProduct) * 180.0 / M_PI;
+        
+        // 计算点到直线的距离
+        double distance = pointToLineDistance(points[curr], points[prev], points[next]);
+        
+        // 判断是否是"毛刺":
+        // 1. 角度与90度相差过大，且距离很小
+        // 2. 特别尖锐的角度(<30度)或非常钝的角度(>150度)
+        // 3. 根据距离比例判断的长毛刺
+        bool isSpike = false;
+        
+        // 条件1：角度与90度相差过大，且距离小
+        if (std::abs(angle - 90.0) > angleThreshold && distance < distanceThreshold) {
+            isSpike = true;
+        }
+        
+        // 条件2：特别尖锐的角度或非常钝的角度几乎总是毛刺
+        if (angle < 30.0 || angle > 150.0) {
+            isSpike = true;
+        }
+        
+        // 条件3：长毛刺 - 点到直线的距离与向量长度的比例很小
+        double minVectorLen = std::min(lenA, lenB);
+        if (minVectorLen > 0.1 && (distance / minVectorLen) < 0.1) {
+            // 长毛刺特征: 很长但很窄
+            isSpike = true;
+        }
+        
+        if (isSpike) {
+            keepPoint[curr] = false;
+        }
+    }
+    
+    // 根据标记重建多边形
+    std::list<topo_geometry::point> smoothedPolygon;
+    for (int i = 0; i < n; ++i) {
+        if (keepPoint[i]) {
+            smoothedPolygon.push_back(points[i]);
+        }
+    }
+    
+    // 确保多边形闭合
+    if (!smoothedPolygon.empty() && !equalLineVertex(smoothedPolygon.front(), smoothedPolygon.back())) {
+        smoothedPolygon.push_back(smoothedPolygon.front());
+    }
+    
+    return smoothedPolygon;
 }
