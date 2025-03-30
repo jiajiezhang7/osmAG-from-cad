@@ -90,6 +90,7 @@ make example_segmentation
   - 如果不知道门宽和走廊宽度，将这两个参数设为 -1，程序将使用固定值 W = 1.25 运行 Alpha Shape 算法来检测房间
 * **noise_percentage**：地图中的噪声百分比估计值。如果使用 "afterAlphaRemoval" 目录中的地图作为输入，可以将此参数设为 0。
 
+<!-- SIST-1-D走廊宽度=2.4m, 门宽=1.6m -->
 示例：
 
 ```bash

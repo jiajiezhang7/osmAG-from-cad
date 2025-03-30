@@ -1,5 +1,6 @@
 #include "roomGraph.h"
 #include "RoomDect.h"
+#include "utils/ParamsLoader.h"
 #include <algorithm>
 #include <fstream>
 #include <iostream>
@@ -862,7 +863,7 @@ void RMG::AreaGraph::exportToOsmAG(const std::string& filename)
         preservePoints.push_back(passage.first.first);  // 第一个端点
         preservePoints.push_back(passage.first.second); // 第二个端点
     }
-    
+
     // 在通道端点优化后进行多边形简化，保留通道端点
     simplifyPolygons(0.02, &preservePoints);
     std::cout << "多边形简化完成，已保留" << preservePoints.size() << "个通道端点" << std::endl;
@@ -913,7 +914,7 @@ void RMG::AreaGraph::exportToOsmAG(const std::string& filename)
     // 创建一个集合来跟踪已经处理过的房间ID
     std::set<int> processedRoomIds;
     
-    // TODO: 在这里 originSet中已经有了“重复“”的多边形
+    // 在这里 originSet中已经有了“重复“”的多边形
     for (auto roomVtx : originSet) {
         
         // 记录这个房间ID已经被处理
