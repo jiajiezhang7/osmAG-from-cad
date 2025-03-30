@@ -74,6 +74,13 @@ class passageEdge;
                                                             double angleThreshold, double distanceThreshold,
                                                             const std::vector<topo_geometry::point>* preservePoints = nullptr);
         
+        // 合并小面积相邻房间
+        void mergeSmallAdjacentRooms(double minArea = 4.0, double maxMergeDistance = 1.5);
+        std::list<topo_geometry::point> mergePolygons(const std::list<topo_geometry::point>& poly1, 
+                                                     const std::list<topo_geometry::point>& poly2);
+        double calculateRoomArea(roomVertex* room);
+        topo_geometry::point calculateRoomCenter(roomVertex* room);
+        
         // 导出为osmAG.xml格式
         void exportToOsmAG(const std::string& filename,
                          bool simplify_enabled = true, double simplify_tolerance = 0.05,

@@ -88,7 +88,11 @@ int main(int argc, char *argv[]) {
     
     // 尝试加载参数文件
     try {
+        // 加载配置文件
         YAML::Node config = YAML::LoadFile("../config/params.yaml");
+        
+        // 将配置加载到ParamsLoader单例中
+        ParamsLoader::getInstance().loadParams("../config/params.yaml");
         
         // 地图预处理参数
         if (config["map_preprocessing"]) {
@@ -357,12 +361,24 @@ int main(int argc, char *argv[]) {
 
     QImage RMGIm = test;
     RMGraph.draw(RMGIm);
-    string room_graph_path = output_dir + "/" + base_name + NumberToString(nearint(a * 100)) + "_roomGraph.png";
+    // 检查小房间合并是否启用
+    bool merge_enabled = false;
+    try {
+        auto& params = ParamsLoader::getInstance();
+        if (params.params["polygon_processing"]["small_room_merge"]) {
+            merge_enabled = params.params["polygon_processing"]["small_room_merge"]["enabled"].as<bool>();
+        }
+    } catch (const std::exception& e) {
+        std::cout << "警告: 读取小房间合并参数失败，使用默认值" << std::endl;
+    }
+    
+    string suffix = merge_enabled ? "_merged" : "";
+    string room_graph_path = output_dir + "/" + base_name + NumberToString(nearint(a * 100)) + suffix + "_roomGraph.png";
     RMGIm.save(room_graph_path.c_str());
     
     // 导出为osmAG.xml格式
     std::cout << "正在导出为osmAG.xml格式..." << std::endl;
-    string osm_path = output_dir + "/" + base_name +  NumberToString(nearint(a * 100)) + "_osmAG.osm";
+    string osm_path = output_dir + "/" + base_name + NumberToString(nearint(a * 100)) + suffix + "_osmAG.osm";
     
     // 传递多边形处理参数
     RMGraph.exportToOsmAG(osm_path.c_str(), simplify_enabled, simplify_tolerance, 

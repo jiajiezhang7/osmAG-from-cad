@@ -58,7 +58,8 @@ public:
         return params["polygon_processing"]["spike_removal"]["distance_threshold"].as<double>();
     }
 
+    YAML::Node params;
+
 private:
     ParamsLoader() = default;
-    YAML::Node params;
 };

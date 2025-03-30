@@ -2,7 +2,7 @@
 map_preprocessing:
   clean_input: false  # 是否对输入图片进行清理
   resolution: 0.05    # 地图分辨率
-  door_width: 2.5    # 门的宽度   #SIST:2.8
+  door_width: 2.8    # 门的宽度   #SIST:2.8
   corridor_width: 3.0 # 走廊宽度
   noise_percent: 1.5   # 噪声百分比
   remove_furniture: true  # 是否执行家具移除
@@ -19,3 +19,9 @@ polygon_processing:
     enabled: true     # 是否启用毛刺去除
     angle_threshold: 30.0  # 角度阈值，用于判断是否为尖角
     distance_threshold: 0.30  # 距离阈值，较小的距离阈值会保留更多的曲线细节
+
+  # 小房间合并
+  small_room_merge:
+    enabled: true      # 是否启用小房间合并
+    min_area: 10.0      # 小于此面积的房间将被考虑合并（平方米）
+    max_merge_distance: 3.0  # 合并时两个房间中心点的最大距离
