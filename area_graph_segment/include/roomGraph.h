@@ -75,7 +75,10 @@ class passageEdge;
                                                             const std::vector<topo_geometry::point>* preservePoints = nullptr);
         
         // 导出为osmAG.xml格式
-        void exportToOsmAG(const std::string& filename);
+        void exportToOsmAG(const std::string& filename,
+                         bool simplify_enabled = true, double simplify_tolerance = 0.05,
+                         bool spike_removal_enabled = true, double spike_angle_threshold = 60.0, 
+                         double spike_distance_threshold = 0.30);
 
         //Jiawei: For using passages as edges
         AreaGraph(VoriGraph &voriGraph);
