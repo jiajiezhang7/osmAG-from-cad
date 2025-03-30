@@ -1050,6 +1050,45 @@ static void douglasPeuckerRecursive(const std::vector<topo_geometry::point>& poi
         douglasPeuckerRecursive(points, furthestIndex, end, epsilon, keepPoint, areaGraph);
     }
 }
+// 计算点到质心的距离
+double distanceToCenter(const topo_geometry::point& p, double centerX, double centerY) {
+    double dx = topo_geometry::getX(p) - centerX;
+    double dy = topo_geometry::getY(p) - centerY;
+    return std::sqrt(dx*dx + dy*dy);
+}
+
+// 检测多边形是否近似圆形
+bool isApproximatelyCircular(const std::vector<topo_geometry::point>& points) {
+    if (points.size() < 8) return false; // 点太少无法判断是否为圆
+    
+    // 计算质心
+    double centerX = 0, centerY = 0;
+    for (const auto& p : points) {
+        centerX += topo_geometry::getX(p);
+        centerY += topo_geometry::getY(p);
+    }
+    centerX /= points.size();
+    centerY /= points.size();
+    
+    // 计算到质心的平均距离
+    double avgRadius = 0;
+    for (const auto& p : points) {
+        avgRadius += distanceToCenter(p, centerX, centerY);
+    }
+    avgRadius /= points.size();
+    
+    // 计算每个点到质心距离与平均距离的差异
+    double variance = 0;
+    for (const auto& p : points) {
+        double radius = distanceToCenter(p, centerX, centerY);
+        variance += (radius - avgRadius) * (radius - avgRadius);
+    }
+    variance /= points.size();
+    
+    // 如果方差小，说明点到质心的距离接近一致，可能是圆形
+    double relativeVariance = variance / (avgRadius * avgRadius);
+    return relativeVariance < 0.05; // 相对方差小于5%可能是圆
+}
 
 // 简化单个多边形
 std::list<topo_geometry::point> RMG::AreaGraph::simplifyPolygon(const std::list<topo_geometry::point>& polygon, double epsilon, const std::vector<topo_geometry::point>* preservePoints) {
@@ -1060,6 +1099,12 @@ std::list<topo_geometry::point> RMG::AreaGraph::simplifyPolygon(const std::list<
     // 转换为向量便于索引访问
     std::vector<topo_geometry::point> points(polygon.begin(), polygon.end());
     int n = points.size();
+    
+    // 检测多边形是否近似圆形
+    bool isCircular = isApproximatelyCircular(points);
+    
+    // 根据多边形类型调整epsilon
+    double effectiveEpsilon = isCircular ? epsilon * 0.5 : epsilon * 1.5;
     
     // 初始化保留标记，默认只保留第一个和最后一个点
     std::vector<bool> keepPoint(n, false);
@@ -1081,8 +1126,8 @@ std::list<topo_geometry::point> RMG::AreaGraph::simplifyPolygon(const std::list<
         }
     }
     
-    // 应用Douglas-Peucker算法
-    douglasPeuckerRecursive(points, 0, n-1, epsilon, keepPoint, this);
+    // 应用Douglas-Peucker算法，使用调整后的epsilon值
+    douglasPeuckerRecursive(points, 0, n-1, effectiveEpsilon, keepPoint, this);
     
     // 根据标记建立简化后的多边形
     std::list<topo_geometry::point> simplifiedPolygon;
@@ -1178,7 +1223,53 @@ void RMG::AreaGraph::removeSpikesFromPolygons(double angleThreshold, double dist
               << (100.0 * (totalPointsBefore - totalPointsAfter) / totalPointsBefore) << "%)" << std::endl;
 }
 
-// 移除单个多边形中的"毛刺"
+
+
+
+// 计算局部曲率
+double calculateLocalCurvature(const std::vector<topo_geometry::point>& points, int index, int windowSize = 5) {
+    int n = points.size();
+    double totalAngleChange = 0;
+    
+    for (int i = 1; i < windowSize; i++) {
+        int prev = (index - i + n) % n;
+        int curr = (index - i + 1 + n) % n;
+        int next = (index - i + 2 + n) % n;
+        
+        // 计算相邻三点的角度
+        double ax = topo_geometry::getX(points[prev]) - topo_geometry::getX(points[curr]);
+        double ay = topo_geometry::getY(points[prev]) - topo_geometry::getY(points[curr]);
+        double bx = topo_geometry::getX(points[next]) - topo_geometry::getX(points[curr]);
+        double by = topo_geometry::getY(points[next]) - topo_geometry::getY(points[curr]);
+        
+        double lenA = std::sqrt(ax*ax + ay*ay);
+        double lenB = std::sqrt(bx*bx + by*by);
+        
+        if (lenA < 1e-6 || lenB < 1e-6) continue;
+        
+        ax /= lenA; ay /= lenA;
+        bx /= lenB; by /= lenB;
+        
+        double dotProduct = ax*bx + ay*by;
+        dotProduct = std::max(-1.0, std::min(1.0, dotProduct));
+        
+        double angle = std::acos(dotProduct) * 180.0 / M_PI;
+        totalAngleChange += std::abs(angle - 180.0); // 计算与直线的偏差
+    }
+    
+    return totalAngleChange / windowSize;
+}
+
+// 检测是否是平滑曲线的一部分
+bool isPartOfSmoothCurve(const std::vector<topo_geometry::point>& points, int index, int windowSize = 5) {
+    double curvature = calculateLocalCurvature(points, index, windowSize);
+    
+    // 如果局部曲率在一个合理范围内，可能是平滑曲线的一部分
+    // 曲率太小表示直线，曲率太大表示尖角
+    return curvature > 5.0 && curvature < 30.0;
+}
+
+// 移除单个多边形中的“毛刺”
 std::list<topo_geometry::point> RMG::AreaGraph::removeSpikesFromPolygon(
                             const std::list<topo_geometry::point>& polygon, 
                             double angleThreshold, double distanceThreshold,
@@ -1190,6 +1281,17 @@ std::list<topo_geometry::point> RMG::AreaGraph::removeSpikesFromPolygon(
     // 将多边形转换为向量便于索引访问
     std::vector<topo_geometry::point> points(polygon.begin(), polygon.end());
     int n = points.size();
+    
+    // 检测多边形是否近似圆形
+    bool isCircular = isApproximatelyCircular(points);
+    
+    // 根据多边形特征调整阈值
+    double effectiveAngleThreshold = isCircular ? angleThreshold * 0.5 : angleThreshold;
+    double effectiveDistanceThreshold = isCircular ? distanceThreshold * 2.0 : distanceThreshold;
+    
+    // if (isCircular) {
+    //     std::cout << "检测到圆形多边形，使用保守参数" << std::endl;
+    // }
     
     // 标记需要保留的点
     std::vector<bool> keepPoint(n, true);
@@ -1259,27 +1361,47 @@ std::list<topo_geometry::point> RMG::AreaGraph::removeSpikesFromPolygon(
         // 计算点到直线的距离
         double distance = pointToLineDistance(points[curr], points[prev], points[next]);
         
-        // 判断是否是"毛刺":
-        // 1. 角度与90度相差过大，且距离很小
-        // 2. 特别尖锐的角度(<30度)或非常钝的角度(>150度)
-        // 3. 根据距离比例判断的长毛刺
+        // 检测是否是平滑曲线的一部分
+        bool isCurve = isPartOfSmoothCurve(points, curr);
+        
+        // 判断是否是“毛刺”
         bool isSpike = false;
         
-        // 条件1：角度与90度相差过大，且距离小
-        if (std::abs(angle - 90.0) > angleThreshold && distance < distanceThreshold) {
-            isSpike = true;
-        }
-        
-        // 条件2：特别尖锐的角度或非常钝的角度几乎总是毛刺
-        if (angle < 30.0 || angle > 150.0) {
-            isSpike = true;
-        }
-        
-        // 条件3：长毛刺 - 点到直线的距离与向量长度的比例很小
-        double minVectorLen = std::min(lenA, lenB);
-        if (minVectorLen > 0.1 && (distance / minVectorLen) < 0.1) {
-            // 长毛刺特征: 很长但很窄
-            isSpike = true;
+        // 如果是平滑曲线的一部分，不视为毛刺
+        if (isCurve && isCircular) {
+            isSpike = false;
+        } else {
+            // 条件1：角度与90度相差过大，且距离小
+            if (std::abs(angle - 90.0) > effectiveAngleThreshold && distance < effectiveDistanceThreshold) {
+                isSpike = true;
+            }
+            
+            // 条件2：特别尖锐的角度或非常钝的角度
+            // 对于圆形，使用更严格的条件
+            if (isCircular) {
+                if (angle < 15.0 || angle > 165.0) { // 更严格的条件
+                    isSpike = true;
+                }
+            } else {
+                if (angle < 30.0 || angle > 150.0) {
+                    isSpike = true;
+                }
+            }
+            
+            // 条件3：长毛刺 - 点到直线的距离与向量长度的比例很小
+            double minVectorLen = std::min(lenA, lenB);
+            double ratio = distance / minVectorLen;
+            
+            // 对于圆形，使用更宽松的比例阈值
+            if (isCircular) {
+                if (minVectorLen > 0.1 && ratio < 0.05) { // 更宽松的条件
+                    isSpike = true;
+                }
+            } else {
+                if (minVectorLen > 0.1 && ratio < 0.1) {
+                    isSpike = true;
+                }
+            }
         }
         
         if (isSpike) {
