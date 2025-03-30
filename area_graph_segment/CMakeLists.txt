@@ -69,6 +69,9 @@ add_library(topo_graph_2d STATIC
   src/cgal/AlphaShapeRemoval.cpp
   src/osmAGExport.cpp)
 
+# 为topo_graph_2d库添加yaml-cpp依赖
+target_link_libraries(topo_graph_2d yaml-cpp)
+
 # 包含头文件目录
 include_directories(${TOPO_GRAPH_2D_SOURCE_DIR}/include)
 include_directories(${CGAL_INCLUDE_DIRS})

@@ -43,6 +43,7 @@ Steps:
 #include "roomGraph.h"
 #include "Denoise.h"
 #include "utils/ParamsLoader.h"
+#include <yaml-cpp/yaml.h>
 
 using namespace std;
 namespace fs = boost::filesystem;
@@ -70,13 +71,51 @@ int main(int argc, char *argv[]) {
     }
     
     // 默认参数设置
-    // 门的宽度
     double door_wide = 1.15;
-    // 走廊宽度
     double corridor_wide = 2;
     double res = 0.05;
     double noise_percent = 1.5;
     bool record_time = false;
+    bool clean_input = false;
+    bool remove_furniture = true;
+    
+    // 多边形处理参数
+    bool simplify_enabled = true;
+    double simplify_tolerance = 0.05;
+    bool spike_removal_enabled = true;
+    double spike_angle_threshold = 60.0;
+    double spike_distance_threshold = 0.30;
+    
+    // 尝试加载参数文件
+    try {
+        YAML::Node config = YAML::LoadFile("../config/params.yaml");
+        
+        // 地图预处理参数
+        if (config["map_preprocessing"]) {
+            clean_input = config["map_preprocessing"]["clean_input"].as<bool>();
+            res = config["map_preprocessing"]["resolution"].as<double>();
+            door_wide = config["map_preprocessing"]["door_width"].as<double>();
+            corridor_wide = config["map_preprocessing"]["corridor_width"].as<double>();
+            noise_percent = config["map_preprocessing"]["noise_percent"].as<double>();
+            remove_furniture = config["map_preprocessing"]["remove_furniture"].as<bool>();
+        }
+        
+        // 多边形处理参数
+        if (config["polygon_processing"]["simplify"]) {
+            simplify_enabled = config["polygon_processing"]["simplify"]["enabled"].as<bool>();
+            simplify_tolerance = config["polygon_processing"]["simplify"]["tolerance"].as<double>();
+        }
+        
+        if (config["polygon_processing"]["spike_removal"]) {
+            spike_removal_enabled = config["polygon_processing"]["spike_removal"]["enabled"].as<bool>();
+            spike_angle_threshold = config["polygon_processing"]["spike_removal"]["angle_threshold"].as<double>();
+            spike_distance_threshold = config["polygon_processing"]["spike_removal"]["distance_threshold"].as<double>();
+        }
+        
+        std::cout << "成功加载参数文件" << std::endl;
+    } catch (const std::exception& e) {
+        std::cout << "无法加载参数文件，使用默认参数: " << e.what() << std::endl;
+    }
     
     // 获取输入图片的基础名称和输出目录
     fs::path input_path(argv[1]);
@@ -86,7 +125,7 @@ int main(int argc, char *argv[]) {
     // 创建输出目录
     fs::create_directory(output_dir);
 
-    // 从命令行读取参数
+    // 从命令行读取参数（命令行参数优先级高于配置文件）
     if (argc > 2) {
         res = atof(argv[2]);
         if (argc > 4) {
@@ -96,7 +135,7 @@ int main(int argc, char *argv[]) {
             if (argc > 5) {
                 noise_percent = atof(argv[5]);
                 if (argc > 6)
-        record_time = true;
+                    record_time = true;
             }
         }
     }
@@ -121,11 +160,19 @@ int main(int argc, char *argv[]) {
         // 输入 - grid_map.png -> argv[1]
         // 输出 - clean.png
 
-        int black_threshold = 210;
-    // 注意: 如果过度clean,将导致多边形黑色边线不完整, 对于比较干净的图,可以将命令行的最后一个参数设置为0
-    bool is_denoise = DenoiseImg(argv[1], "clean.png", black_threshold, 18, noise_percent);
-    if (is_denoise)
+    int black_threshold = 210;
+    bool is_denoise = false;
+    
+    // 根据clean_input标志决定是否进行去噪处理
+    if (clean_input) {
+        is_denoise = DenoiseImg(argv[1], "clean.png", black_threshold, 18, noise_percent);
+        if (is_denoise)
             cout << "Denoise run successed!!" << endl;
+    } else {
+        // 如果不进行去噪，直接复制原图
+        fs::copy_file(argv[1], "clean.png", fs::copy_option::overwrite_if_exists);
+        cout << "Skipped denoising as per configuration" << endl;
+    }
     
     // ----------------------------------------------------------------------------
     // 第2步: 移除家具 - 使用Alpha Shape算法
@@ -134,14 +181,34 @@ int main(int argc, char *argv[]) {
 
     QImage test;
     test.load("clean.png");
+    
+    // 确保图像格式为支持的格式（ARGB32或RGB888）
+    if (test.format() != QImage::Format_ARGB32 && test.format() != QImage::Format_RGB888) {
+        cout << "Converting image to supported format..." << endl;
+        test = test.convertToFormat(QImage::Format_ARGB32);
+    }
 
     bool isTriple;
     analyseImage(test, isTriple);
 
-        double AlphaShapeSquaredDist = 
-                (sConfig->voronoiMinimumDistanceToObstacle()) * (sConfig->voronoiMinimumDistanceToObstacle());
+    double AlphaShapeSquaredDist = 
+            (sConfig->voronoiMinimumDistanceToObstacle()) * (sConfig->voronoiMinimumDistanceToObstacle());
+    
+    // 根据remove_furniture标志决定是否执行家具移除
+    if (remove_furniture) {
         // 关键函数，执行家具移除
         performAlphaRemoval(test, AlphaShapeSquaredDist, MAX_PLEN_REMOVAL);
+        cout << "Furniture removal performed" << endl;
+    } else {
+        cout << "Skipped furniture removal as per configuration" << endl;
+    }
+    
+    // 家具移除后再次确保图像格式正确
+    if (test.format() != QImage::Format_ARGB32 && test.format() != QImage::Format_RGB888) {
+        cout << "Re-converting image to supported format after furniture removal..." << endl;
+        test = test.convertToFormat(QImage::Format_ARGB32);
+    }
+    
     test.save("afterAlphaRemoval.png");
 
     // ----------------------------------------------------------------------------
@@ -149,6 +216,12 @@ int main(int argc, char *argv[]) {
         // 输入 - test  （处理后的图像）
         // 输出 - sites （障碍物点集合）
 
+    // 在提取障碍物点前再次确保图像格式正确
+    if (test.format() != QImage::Format_ARGB32 && test.format() != QImage::Format_RGB888) {
+        cout << "Re-converting image to supported format before extracting sites..." << endl;
+        test = test.convertToFormat(QImage::Format_ARGB32);
+    }
+    
     std::vector<topo_geometry::point> sites;
     bool ret = getSites(test, sites);
 
@@ -290,7 +363,10 @@ int main(int argc, char *argv[]) {
     // 导出为osmAG.xml格式
     std::cout << "正在导出为osmAG.xml格式..." << std::endl;
     string osm_path = output_dir + "/" + base_name +  NumberToString(nearint(a * 100)) + "_osmAG.osm";
-    RMGraph.exportToOsmAG(osm_path.c_str());
+    
+    // 传递多边形处理参数
+    RMGraph.exportToOsmAG(osm_path.c_str(), simplify_enabled, simplify_tolerance, 
+                          spike_removal_enabled, spike_angle_threshold, spike_distance_threshold);
     
     return 0;
 }

@@ -596,7 +596,10 @@ void RMG::AreaGraph::transferPassages(roomVertex* source, roomVertex* target) {
 }
 
 // 将AreaGraph导出为osmAG.xml格式
-void RMG::AreaGraph::exportToOsmAG(const std::string& filename)
+void RMG::AreaGraph::exportToOsmAG(const std::string& filename,
+                               bool simplify_enabled, double simplify_tolerance,
+                               bool spike_removal_enabled, double spike_angle_threshold, 
+                               double spike_distance_threshold)
 {
     // 添加调试信息
     std::cout << "开始导出AreaGraph到" << filename << std::endl;
@@ -864,13 +867,25 @@ void RMG::AreaGraph::exportToOsmAG(const std::string& filename)
         preservePoints.push_back(passage.first.second); // 第二个端点
     }
 
-    // 在通道端点优化后进行多边形简化，保留通道端点
-    simplifyPolygons(0.02, &preservePoints);
-    std::cout << "多边形简化完成，已保留" << preservePoints.size() << "个通道端点" << std::endl;
+    // 根据参数决定是否进行多边形简化
+    if (simplify_enabled) {
+        // 在通道端点优化后进行多边形简化，保留通道端点
+        simplifyPolygons(simplify_tolerance, &preservePoints);
+        std::cout << "多边形简化完成，使用参数tolerance=" << simplify_tolerance 
+                  << "，已保留" << preservePoints.size() << "个通道端点" << std::endl;
+    } else {
+        std::cout << "跳过多边形简化处理" << std::endl;
+    }
     
-    // 移除房间多边形中的“毛刺”和头角
-    removeSpikesFromPolygons(15.0, 0.15, &preservePoints); // 使用更激进的参数增强毛刺去除效果
-    std::cout << "多边形平滑完成，已移除毛刺和尖角" << std::endl;
+    // 根据参数决定是否进行毛刺去除
+    if (spike_removal_enabled) {
+        // 移除房间多边形中的“毛刺”和尖角
+        removeSpikesFromPolygons(spike_angle_threshold, spike_distance_threshold, &preservePoints);
+        std::cout << "多边形平滑完成，使用参数angle_threshold=" << spike_angle_threshold 
+                  << ", distance_threshold=" << spike_distance_threshold << std::endl;
+    } else {
+        std::cout << "跳过毛刺去除处理" << std::endl;
+    }
     
     // 遍历所有房间，生成节点ID（使用优化后的多边形）
     for (auto roomVtx : originSet) {
