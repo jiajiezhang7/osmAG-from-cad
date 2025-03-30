@@ -12,7 +12,7 @@ set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
 
 # 查找Boost库
-find_package(Boost REQUIRED)
+find_package(Boost REQUIRED COMPONENTS filesystem system)
 if(NOT Boost_FOUND)
   message(STATUS "This project requires the Boost library, and will not be compiled.")
   return()
@@ -32,6 +32,9 @@ if(NOT Qt5_FOUND)
   message(STATUS "This program requires the Qt5 library, and will not be compiled.")
   return()
 endif()
+
+# 查找yaml-cpp库
+find_package(yaml-cpp REQUIRED)
 
 # 包含CGAL和Qt5的配置文件
 include(${CGAL_USE_FILE})
@@ -84,5 +87,25 @@ add_executable(test_area_graph test/test_area_graph.cpp)
 message(STATUS "CGAL libraries: ${CGAL_LIBRARIES}")
 
 # 链接库文件
-target_link_libraries(area_graph_segmentation topo_graph_2d Qt5::Widgets Qt5::Core Qt5::Gui ${CGAL_LIBRARIES} ${Boost_LIBRARIES})
-target_link_libraries(test_area_graph topo_graph_2d Qt5::Widgets Qt5::Core Qt5::Gui ${CGAL_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(area_graph_segmentation 
+    topo_graph_2d 
+    Qt5::Widgets 
+    Qt5::Core 
+    Qt5::Gui 
+    ${CGAL_LIBRARIES} 
+    ${Boost_LIBRARIES}
+    Boost::filesystem
+    Boost::system
+    yaml-cpp
+)
+
+target_link_libraries(test_area_graph 
+    topo_graph_2d 
+    Qt5::Widgets 
+    Qt5::Core 
+    Qt5::Gui 
+    ${CGAL_LIBRARIES} 
+    ${Boost_LIBRARIES}
+    Boost::filesystem
+    Boost::system
+)

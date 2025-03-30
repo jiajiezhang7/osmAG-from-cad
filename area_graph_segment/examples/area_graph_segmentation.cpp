@@ -42,9 +42,10 @@ Steps:
 #include "RoomDect.h"
 #include "roomGraph.h"
 #include "Denoise.h"
-
+#include "utils/ParamsLoader.h"
 
 using namespace std;
+namespace fs = boost::filesystem;
 
 template<typename T>
 std::string NumberToString(T Number) {
@@ -69,12 +70,22 @@ int main(int argc, char *argv[]) {
     }
     
     // 默认参数设置
+    // 门的宽度
     double door_wide = 1.15;
+    // 走廊宽度
     double corridor_wide = 2;
     double res = 0.05;
     double noise_percent = 1.5;
     bool record_time = false;
     
+    // 获取输入图片的基础名称和输出目录
+    fs::path input_path(argv[1]);
+    string base_name = input_path.stem().string();
+    string output_dir = base_name + "_output";
+    
+    // 创建输出目录
+    fs::create_directory(output_dir);
+
     // 从命令行读取参数
     if (argc > 2) {
         res = atof(argv[2]);
@@ -85,15 +96,14 @@ int main(int argc, char *argv[]) {
             if (argc > 5) {
                 noise_percent = atof(argv[5]);
                 if (argc > 6)
-                    record_time = true;
+        record_time = true;
             }
         }
     }
 
     // 第0步：配置参数设定
     sConfig = new VoriConfig();
-    // 增大alphaShapeRemovalSquaredSize的值（默认625）到900-1000，这样可以减少过度分割
-    sConfig->doubleConfigVars["alphaShapeRemovalSquaredSize"] = 900;
+    sConfig->doubleConfigVars["alphaShapeRemovalSquaredSize"] = 1000;
     sConfig->doubleConfigVars["firstDeadEndRemovalDistance"] = 100000;
     sConfig->doubleConfigVars["secondDeadEndRemovalDistance"] = -100000;
     sConfig->doubleConfigVars["thirdDeadEndRemovalDistance"] = 0.25 / res;
@@ -102,7 +112,6 @@ int main(int argc, char *argv[]) {
     sConfig->doubleConfigVars["topoGraphAngleCalcStartDistance"] = 3;
     sConfig->doubleConfigVars["topoGraphAngleCalcStepSize"] = 0.1;
     sConfig->doubleConfigVars["topoGraphDistanceToJoinVertices"] = 10;
-    // 增大topoGraphMarkAsFeatureEdgeLength的值（当前为16）到20-24，这样可以减少特征边的生成
     sConfig->doubleConfigVars["topoGraphMarkAsFeatureEdgeLength"] = 20;
     sConfig->doubleConfigVars["voronoiMinimumDistanceToObstacle"] = 0.25 / res;
     sConfig->doubleConfigVars["topoGraphDistanceToJoinVertices"] = 4;
@@ -112,11 +121,11 @@ int main(int argc, char *argv[]) {
         // 输入 - grid_map.png -> argv[1]
         // 输出 - clean.png
 
-    int black_threshold = 210;
+        int black_threshold = 210;
     // 注意: 如果过度clean,将导致多边形黑色边线不完整, 对于比较干净的图,可以将命令行的最后一个参数设置为0
     bool is_denoise = DenoiseImg(argv[1], "clean.png", black_threshold, 18, noise_percent);
     if (is_denoise)
-        cout << "Denoise run successed!!" << endl;
+            cout << "Denoise run successed!!" << endl;
     
     // ----------------------------------------------------------------------------
     // 第2步: 移除家具 - 使用Alpha Shape算法
@@ -129,10 +138,10 @@ int main(int argc, char *argv[]) {
     bool isTriple;
     analyseImage(test, isTriple);
 
-    double AlphaShapeSquaredDist = 
-            (sConfig->voronoiMinimumDistanceToObstacle()) * (sConfig->voronoiMinimumDistanceToObstacle());
-    // 关键函数，执行家具移除
-    performAlphaRemoval(test, AlphaShapeSquaredDist, MAX_PLEN_REMOVAL);
+        double AlphaShapeSquaredDist = 
+                (sConfig->voronoiMinimumDistanceToObstacle()) * (sConfig->voronoiMinimumDistanceToObstacle());
+        // 关键函数，执行家具移除
+        performAlphaRemoval(test, AlphaShapeSquaredDist, MAX_PLEN_REMOVAL);
     test.save("afterAlphaRemoval.png");
 
     // ----------------------------------------------------------------------------
@@ -151,13 +160,16 @@ int main(int argc, char *argv[]) {
 
     // alpha参数策略
     double a;
+    // 这里用到了读入的参数 - door_wide, corridor_wide
+    // a = 两个当中的较小值 
     if (door_wide < corridor_wide) {
         a = door_wide + 0.1;
     } else {
-        a = corridor_wide - 0.1;
+         a= corridor_wide - 0.1;
     }
 
     int alpha_value = ceil(a * a * 0.25 / (res * res));
+    // alpha_value越小，越不会过度分割
     sConfig->doubleConfigVars["alphaShapeRemovalSquaredSize"] = alpha_value;
     std::cout << "a = " << a << ", where alpha = " << alpha_value << std::endl;
     
@@ -254,19 +266,9 @@ int main(int argc, char *argv[]) {
     // 保存彩色区域图
     QImage dectRoom = test;
     paintVori_onlyArea(dectRoom, voriGraph);
-    string tem_s = NumberToString(nearint(a * 100)) + ".png";
+    string tem_s = output_dir + "/" + base_name + "_area_" + NumberToString(nearint(a * 100)) + ".png";
     dectRoom.save(tem_s.c_str());
     
-
-    // 保存黑白轮廓图
-    QImage outlineRoom = test;
-    paintVori_OnlyOutline(outlineRoom, voriGraph);
-    string outline_name = NumberToString(nearint(a * 100)) + "_outline.png";
-    if (!outlineRoom.save(outline_name.c_str())) {
-        std::cout << "Failed to save outline image to: " << outline_name << std::endl;
-    } else {
-        std::cout << "Successfully saved outline image to: " << outline_name << std::endl;
-    }
 
     //-----------------------------------------------------------------------------------------------
     // TODO: 第8步: 区域合并 - 生成最终区域图 (也即经过优化后彩色区域图)
@@ -282,11 +284,13 @@ int main(int argc, char *argv[]) {
 
     QImage RMGIm = test;
     RMGraph.draw(RMGIm);
-    RMGIm.save("roomGraph.png");
+    string room_graph_path = output_dir + "/" + base_name + NumberToString(nearint(a * 100)) + "_roomGraph.png";
+    RMGIm.save(room_graph_path.c_str());
     
     // 导出为osmAG.xml格式
     std::cout << "正在导出为osmAG.xml格式..." << std::endl;
-    RMGraph.exportToOsmAG("osmAG_optimized.osm");
+    string osm_path = output_dir + "/" + base_name +  NumberToString(nearint(a * 100)) + "_osmAG.osm";
+    RMGraph.exportToOsmAG(osm_path.c_str());
     
     return 0;
 }
