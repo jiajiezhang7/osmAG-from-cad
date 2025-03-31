@@ -169,12 +169,14 @@ int main(int argc, char *argv[]) {
     
     // 根据clean_input标志决定是否进行去噪处理
     if (clean_input) {
-        is_denoise = DenoiseImg(argv[1], "clean.png", black_threshold, 18, noise_percent);
+        string clean_path = output_dir + "/clean.png";
+        is_denoise = DenoiseImg(argv[1], clean_path.c_str(), black_threshold, 18, noise_percent);
         if (is_denoise)
             cout << "Denoise run successed!!" << endl;
     } else {
         // 如果不进行去噪，直接复制原图
-        fs::copy_file(argv[1], "clean.png", fs::copy_option::overwrite_if_exists);
+        string clean_path = output_dir + "/clean.png";
+        fs::copy_file(argv[1], clean_path, fs::copy_options::overwrite_existing);
         cout << "Skipped denoising as per configuration" << endl;
     }
     
@@ -184,7 +186,8 @@ int main(int argc, char *argv[]) {
         // 输出 - afterAlphaRemoval.png
 
     QImage test;
-    test.load("clean.png");
+    string clean_path = output_dir + "/clean.png";
+    test.load(clean_path.c_str());
     
     // 确保图像格式为支持的格式（ARGB32或RGB888）
     if (test.format() != QImage::Format_ARGB32 && test.format() != QImage::Format_RGB888) {
@@ -213,7 +216,8 @@ int main(int argc, char *argv[]) {
         test = test.convertToFormat(QImage::Format_ARGB32);
     }
     
-    test.save("afterAlphaRemoval.png");
+    string alpha_removal_path = output_dir + "/afterAlphaRemoval.png";
+    test.save(alpha_removal_path.c_str());
 
     // ----------------------------------------------------------------------------
     // 第3步： 提取障碍物点
@@ -341,10 +345,11 @@ int main(int argc, char *argv[]) {
     // ----------------------------------------------------------------------------------------------
 
     // 保存彩色区域图
-    QImage dectRoom = test;
-    paintVori_onlyArea(dectRoom, voriGraph);
-    string tem_s = output_dir + "/" + base_name + "_area_" + NumberToString(nearint(a * 100)) + ".png";
-    dectRoom.save(tem_s.c_str());
+    // QImage dectRoom = test;
+    // paintVori_onlyArea(dectRoom, voriGraph);
+    // 这和roomGraph是重复的
+    // string tem_s = output_dir + "/" + base_name + "_area_" + NumberToString(nearint(a * 100)) + ".png";
+    // dectRoom.save(tem_s.c_str());
     
 
     //-----------------------------------------------------------------------------------------------
@@ -359,6 +364,7 @@ int main(int argc, char *argv[]) {
 
     RMGraph.mergeRoomPolygons();
 
+    // 保存最终区域图
     QImage RMGIm = test;
     RMGraph.draw(RMGIm);
     // 检查小房间合并是否启用
