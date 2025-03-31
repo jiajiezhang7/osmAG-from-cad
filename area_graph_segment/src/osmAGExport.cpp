@@ -1,6 +1,7 @@
 #include "roomGraph.h"
 #include "RoomDect.h"
 #include "utils/ParamsLoader.h"
+#include "WGS84toCartesian.h"
 #include <algorithm>
 #include <fstream>
 #include <iostream>
@@ -8,6 +9,7 @@
 #include <set>
 #include <vector>
 #include <limits>
+#include <array>
 
 // 判断两个点是否相等（考虑浮点误差）
 static bool equalLineVertex(const topo_geometry::point &a, const topo_geometry::point &b) {
@@ -30,16 +32,19 @@ static double calc_poly_area(std::list<topo_geometry::point> &polygon) {
 }
 
 // 将笛卡尔坐标转换为经纬度
-static std::pair<double, double> cartesianToLatLon(double x, double y, const topo_geometry::point& root_point)
+static std::pair<double, double> cartesianToLatLon(double x, double y, double root_lat, double root_lon)
 {
-    // 坐标缩放因子(根据实际地图大小调整)
-    const double SCALE_FACTOR = 0.001;
+    // 使用WGS84坐标系统进行转换
+    // 创建参考点（root_node的经纬度）
+    std::array<double, 2> reference{root_lat, root_lon};
     
-    // 计算相对于根节点的偏移量，并转换为经纬度
-    double lat = topo_geometry::getY(root_point) + y * SCALE_FACTOR;
-    double lon = topo_geometry::getX(root_point) + x * SCALE_FACTOR;
+    // 创建笛卡尔坐标（相对于root_node，它的坐标是0,0）
+    std::array<double, 2> cartesian{x, y};
     
-    return std::make_pair(lat, lon);
+    // 使用WGS84从笛卡尔坐标转换为经纬度
+    std::array<double, 2> wgs84Position = ::wgs84::fromCartesian(reference, cartesian);
+    
+    return std::make_pair(wgs84Position[0], wgs84Position[1]);
 }
 
 // 优化房间多边形，使通道与房间边界重合
@@ -650,12 +655,29 @@ void RMG::AreaGraph::exportToOsmAG(const std::string& filename,
     int nextId = -1;
     std::map<topo_geometry::point, int, topo_geometry::Smaller> pointToNodeId;
     
-    // 1. 创建根节点作为坐标原点(0,0)
-    // 直接使用构造函数创建点，不使用setX和setY
-    topo_geometry::point root_point(0.01, 0.01);
+    // 1. 从params.yaml读取root_node坐标并创建根节点
+    double root_lat = 31.17947960435;  // 默认值
+    double root_lon = 121.59139728509; // 默认值
+    try {
+        auto& params = ParamsLoader::getInstance();
+        if (params.params["root_node"]) {
+            root_lat = params.params["root_node"]["latitude"].as<double>();
+            root_lon = params.params["root_node"]["longitude"].as<double>();
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "警告: 读取root_node坐标失败，使用默认值: " << e.what() << std::endl;
+    }
+
+    // 创建根节点，使用配置的经纬度
+    topo_geometry::point root_point(0.01, 0.01);  // 仍然保持原来的笛卡尔坐标
     int rootId = nextId--;
+    
+    // 设置输出精度为11位小数
+    osmFile.precision(11);
+    osmFile << std::fixed;
+    
     osmFile << "  <node id='" << rootId << "' action='modify' visible='true' lat='" 
-            << topo_geometry::getY(root_point) << "' lon='" << topo_geometry::getX(root_point) << "'>\n";
+            << root_lat << "' lon='" << root_lon << "'>\n";
     osmFile << "    <tag k='name' v='root' />\n";
     osmFile << "  </node>\n";
     
@@ -827,7 +849,7 @@ void RMG::AreaGraph::exportToOsmAG(const std::string& filename,
                 nodeIdA = nextId--;
                 pointToNodeId[pointA] = nodeIdA;
                 
-                auto latLon = cartesianToLatLon(topo_geometry::getX(pointA), topo_geometry::getY(pointA), root_point);
+                auto latLon = cartesianToLatLon(topo_geometry::getX(pointA), topo_geometry::getY(pointA), root_lat, root_lon);
                 osmFile << "  <node id='" << nodeIdA << "' action='modify' visible='true' lat='" 
                         << latLon.first << "' lon='" << latLon.second << "' />\n";
             }
@@ -847,7 +869,7 @@ void RMG::AreaGraph::exportToOsmAG(const std::string& filename,
                     nodeIdB = nextId--;
                     pointToNodeId[pointB] = nodeIdB;
                     
-                    auto latLon = cartesianToLatLon(topo_geometry::getX(pointB), topo_geometry::getY(pointB), root_point);
+                    auto latLon = cartesianToLatLon(topo_geometry::getX(pointB), topo_geometry::getY(pointB), root_lat, root_lon);
                     osmFile << "  <node id='" << nodeIdB << "' action='modify' visible='true' lat='" 
                             << latLon.first << "' lon='" << latLon.second << "' />\n";
                 }
@@ -939,7 +961,7 @@ void RMG::AreaGraph::exportToOsmAG(const std::string& filename,
                 pointToNodeId[point] = nodeId;
                 
                 // 转换为经纬度
-                auto latLon = cartesianToLatLon(topo_geometry::getX(point), topo_geometry::getY(point), root_point);
+                auto latLon = cartesianToLatLon(topo_geometry::getX(point), topo_geometry::getY(point), root_lat, root_lon);
                 
                 // 写入节点
                 osmFile << "  <node id='" << nodeId << "' action='modify' visible='true' lat='" 
@@ -1423,20 +1445,6 @@ void RMG::AreaGraph::simplifyPolygons(double epsilon, const std::vector<topo_geo
  *    - 范围: 0.05-0.3
  *    - 越大越激进，会移除更多距离直线较远的点
  *    - 极端值: 0.3 (非常激进)
- * 
- * 3. 针对特定毛刺类型的调整:
- *    - 针对尖角: 在代码中修改 "angle < 30.0" 为更大的值(如 40.0)
- *    - 针对钝角: 在代码中修改 "angle > 150.0" 为更小的值(如 140.0)
- *    - 针对长毛刺: 在代码中增大 "(distance / minVectorLen) < 0.1" 中的比例值
- * 
- * 4. 极端情况下的组合参数:
- *    - 最激进: angleThreshold=8.0, distanceThreshold=0.3
- *    - 中等: angleThreshold=15.0, distanceThreshold=0.15
- *    - 保守: angleThreshold=30.0, distanceThreshold=0.05
- * 
- * 5. 对于特别顶固的毛刺，可以考虑多次迭代应用算法
- * 
- * 注意: 参数过于激进可能会过度简化多边形，导致有意义的形状丢失
  */
 void RMG::AreaGraph::removeSpikesFromPolygons(double angleThreshold, double distanceThreshold, 
                                           const std::vector<topo_geometry::point>* preservePoints) {

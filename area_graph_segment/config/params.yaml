@@ -1,27 +1,44 @@
 # 地图预处理参数
 map_preprocessing:
   clean_input: false  # 是否对输入图片进行清理
-  resolution: 0.05    # 地图分辨率
-  door_width: 2.8    # 门的宽度   #SIST:2.8
+  resolution: 0.05    # 地图分辨率（根据计算得到 - 走廊宽度2.4m， 54个像素， 2.4/54 = 0.044）
+  door_width: 2.8    # 门的宽度   #SIST:2.8 - res=0.05
   corridor_width: 3.0 # 走廊宽度
   noise_percent: 1.5   # 噪声百分比
   remove_furniture: true  # 是否执行家具移除
+
+# root_node坐标配置，小数点后11位
+root_node:
+  latitude: 31.17947960435
+  longitude: 121.59139728509
 
 # 多边形处理参数
 polygon_processing:
   # 多边形简化
   simplify:
     enabled: true     # 是否启用多边形简化
-    tolerance: 0.2   # 简化参数
+    # 这个值就是epsilon 另外，增大它会导致简化效果加剧
+    tolerance: 1.3   # 简化参数 1.3正正好
 
   # 毛刺去除
+  # 参数调整指南:
+  # 1. 角度阈值(angleThreshold)
+  #    - 默认值: 15.0
+  #    - 范围: 5.0-30.0
+  #    - 越小越激进，会移除更多与90度偏差小的角
+  #    - 极端值: 8.0 (非常激进)
+  # 2. 距离阈值(distanceThreshold)
+  #    - 默认值: 0.15
+  #    - 范围: 0.05-0.3
+  #    - 越大越激进，会移除更多距离直线较远的点
+  #    - 极端值: 0.3 (非常激进)
   spike_removal:
     enabled: true     # 是否启用毛刺去除
-    angle_threshold: 30.0  # 角度阈值，用于判断是否为尖角
+    angle_threshold: 15.0  # 角度阈值，用于判断是否为尖角
     distance_threshold: 0.30  # 距离阈值，较小的距离阈值会保留更多的曲线细节
 
   # 小房间合并
   small_room_merge:
-    enabled: true      # 是否启用小房间合并
+    enabled: false      # 是否启用小房间合并 --- 这部分功能还是跑不通的
     min_area: 10.0      # 小于此面积的房间将被考虑合并（平方米）
     max_merge_distance: 3.0  # 合并时两个房间中心点的最大距离
