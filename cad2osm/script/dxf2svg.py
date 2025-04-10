@@ -3,6 +3,9 @@
 import ezdxf
 import svgwrite
 import math
+import os
+import glob
+import numpy as np
 
 def get_entity_bounds(entity):
     """获取单个实体的边界点"""
@@ -57,28 +60,75 @@ def get_bounds(points):
     min_x, max_x = min(xs), max(xs)
     min_y, max_y = min(ys), max(ys)
     
-    # 添加1%的边距
+    # 添加边距 (从 1% 增加到 3%)
     width = max_x - min_x
     height = max_y - min_y
-    padding = max(width, height) * 0.01
+    # 如果宽度或高度为0，给一个最小边距，避免padding为0
+    base_dimension = max(width, height)
+    if base_dimension == 0: 
+        padding = 1.0 # 或者其他合适的默认小边距值
+    else:
+        padding = base_dimension * 0.03 # 从 0.01 增加到 0.03
     
     return (min_x - padding, min_y - padding, 
             max_x + padding, max_y + padding)
 
-def get_modelspace_bounds(msp):
-    """获取所有实体的整体边界"""
+def get_modelspace_bounds(msp, lower_percentile=0.5, upper_percentile=99.5):
+    """获取所有实体的整体边界 (使用百分位数过滤离群点)"""
     all_points = []
     for entity in msp:
         try:
             points = get_entity_bounds(entity)
-            all_points.extend(points)
-        except:
+            if points:
+                all_points.extend(points)
+        except Exception as e:
+            # print(f"Warning: Skipping entity {entity.dxftype()} due to error: {e}")
             continue
     
     if not all_points:
         return None
-        
-    return get_bounds(all_points)
+
+    # 分离 x 和 y 坐标
+    all_x = [p[0] for p in all_points]
+    all_y = [p[1] for p in all_points]
+
+    if not all_x: # 再次检查以防万一
+        return None
+
+    # 1. 计算坐标的百分位数边界
+    try:
+        min_x_bound = np.percentile(all_x, lower_percentile)
+        max_x_bound = np.percentile(all_x, upper_percentile)
+        min_y_bound = np.percentile(all_y, lower_percentile)
+        max_y_bound = np.percentile(all_y, upper_percentile)
+    except IndexError:
+        # 如果 all_x 或 all_y 为空或 numpy 出错，回退到不进行过滤
+        print("Warning: Error calculating percentiles. Falling back to using all points.")
+        final_points = all_points
+        return get_bounds(final_points)
+
+    # 2. 过滤点
+    filtered_points = [
+        p for p in all_points
+        if (min_x_bound <= p[0] <= max_x_bound) and \
+           (min_y_bound <= p[1] <= max_y_bound)
+    ]
+
+    # 3. 如果过滤后没有点，则回退到使用所有点 (保险措施)
+    if not filtered_points:
+        print("Warning: Percentile filtering removed all points. Falling back to using all points.")
+        final_points = all_points
+    else:
+        # print(f"Filtered points using percentiles: {len(filtered_points)}/{len(all_points)}")
+        final_points = filtered_points
+
+    # 4. 使用过滤后的点计算最终边界
+    final_bounds = get_bounds(final_points)
+    
+    # print(f"Percentile bounds: x=[{min_x_bound}, {max_x_bound}], y=[{min_y_bound}, {max_y_bound}]")
+    # print(f"Final bounds: {final_bounds}")
+
+    return final_bounds
 
 def normalize_coordinates(bounds, target_size=4000):  # 增加默认分辨率
     """规范化坐标"""
@@ -176,11 +226,42 @@ def dxf_to_svg(input_path, output_path, target_size=4000):  # 增加默认分辨
     
     except Exception as e:
         return False, f"转换失败: {str(e)}"
-    
+
 
 if __name__ == "__main__":
-    input_file = "/home/jay/agSeg_ws/area_graph_segment/data_dxf/SIST-F1.dxf"
-    svg_file = "/home/jay/agSeg_ws/area_graph_segment/data_img/SIST-F1.svg"
-    
-    success, message = dxf_to_svg(input_file, svg_file)
-    print(message)
+    # --- 用户可修改路径 ---
+    input_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/data_dxf/filtered_trial/" # 输入 DXF 文件夹
+    output_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/data_img/svg_filtered_trial/" # 输出 SVG 文件夹
+    # --------------------
+
+    # 确保输出目录存在
+    os.makedirs(output_dir, exist_ok=True)
+
+    # 查找输入目录下的所有 DXF 文件
+    dxf_files = glob.glob(os.path.join(input_dir, '*.dxf'))
+
+    if not dxf_files:
+        print(f"错误：在目录 '{input_dir}' 中未找到任何 .dxf 文件。")
+    else:
+        print(f"找到 {len(dxf_files)} 个 DXF 文件，开始批量转换...")
+        success_count = 0
+        fail_count = 0
+
+        for input_file in dxf_files:
+            filename = os.path.basename(input_file)
+            svg_filename = os.path.splitext(filename)[0] + ".svg"
+            svg_file = os.path.join(output_dir, svg_filename)
+
+            print(f"--- 正在处理: {filename} ---")
+            success, message = dxf_to_svg(input_file, svg_file)
+            if success:
+                print(f"  -> 转换成功: {svg_file}")
+                success_count += 1
+            else:
+                print(f"  -> 转换失败: {message}")
+                fail_count += 1
+
+        print("\n--- 批量转换完成 ---")
+        print(f"成功转换文件数: {success_count}")
+        print(f"失败文件数: {fail_count}")
+        print(f"SVG 文件保存在: {output_dir}")

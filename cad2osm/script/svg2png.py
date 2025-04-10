@@ -6,6 +6,8 @@ from svgpathtools import svg2paths
 import cairosvg
 from PIL import Image
 import io
+import os
+import glob
 
 # 禁用PIL的最大图像尺寸限制
 Image.MAX_IMAGE_PIXELS = None
@@ -81,13 +83,62 @@ def save_occupancy_grid(occupancy_grid, output_path):
 
 # 使用示例
 if __name__ == "__main__":
-    svg_file = "/home/jay/agSeg_ws/area_graph_segment/data_img/SIST_f1_latest_v5.svg"
-    output_file = "/home/jay/agSeg_ws/area_graph_segment/data_img/SIST_f1_latest_v5.png" 
-    
-    grid = svg_to_occupancy_grid(
-        svg_file,
-        output_size=(4000, 4000),
-        line_thickness=1  # 设为1保持原始线条粗细
-    )
-    
-    save_occupancy_grid(grid, output_file)
+    # --- 用户可修改路径 ---
+    input_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/data_img/svg_filtered_trial/" # 输入 SVG 文件夹
+    output_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/data_img/png_filtered_trial/" # 输出 PNG 文件夹
+    target_output_size = (4000, 4000) # 目标 PNG 尺寸
+    target_line_thickness = 1        # 输出 PNG 中的线条粗细 (1表示保持原样)
+    # --------------------
+
+    # 确保输出目录存在
+    os.makedirs(output_dir, exist_ok=True)
+
+    # 查找输入目录下的所有 SVG 文件
+    svg_files = glob.glob(os.path.join(input_dir, '*.svg'))
+
+    if not svg_files:
+        print(f"错误：在目录 '{input_dir}' 中未找到任何 .svg 文件。")
+    else:
+        print(f"找到 {len(svg_files)} 个 SVG 文件，开始批量转换...")
+        success_count = 0
+        fail_count = 0
+        failed_files = []
+
+        for svg_file in svg_files:
+            filename = os.path.basename(svg_file)
+            png_filename = os.path.splitext(filename)[0] + ".png"
+            output_file = os.path.join(output_dir, png_filename)
+
+            print(f"--- 正在处理: {filename} ---")
+            try:
+                grid = svg_to_occupancy_grid(
+                    svg_file,
+                    output_size=target_output_size,
+                    line_thickness=target_line_thickness
+                )
+                save_occupancy_grid(grid, output_file)
+                print(f"  -> 转换成功: {output_file}")
+                success_count += 1
+            except Exception as e:
+                print(f"  -> 转换失败: {filename} - {e}")
+                fail_count += 1
+                failed_files.append(filename)
+
+        print("\n--- 批量转换完成 ---")
+        print(f"成功转换文件数: {success_count}")
+        print(f"失败文件数: {fail_count}")
+        if failed_files:
+            print("失败的文件列表:")
+            for f in failed_files:
+                print(f"  - {f}")
+        print(f"PNG 文件保存在: {output_dir}")
+
+    # # 旧的单文件处理逻辑 (注释掉或删除)
+    # svg_file = "/home/jay/agSeg_ws/area_graph_segment/data_img/SIST_f1_latest_v5.svg"
+    # output_file = "/home/jay/agSeg_ws/area_graph_segment/data_img/SIST_f1_latest_v5.png" 
+    # grid = svg_to_occupancy_grid(
+    #     svg_file,
+    #     output_size=(4000, 4000),
+    #     line_thickness=1  # 设为1保持原始线条粗细
+    # )
+    # save_occupancy_grid(grid, output_file)
