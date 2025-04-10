@@ -1,0 +1,4 @@
+2025-04-09 14:15:36,372 - INFO - ODA File Converter found at: /usr/bin/ODAFileConverter
+2025-04-09 14:15:36,373 - INFO - Input absolute path: /home/jay/AGSeg_ws/AGSeg/cad2osm/data/data_dwg/SIST-F1.dwg
+2025-04-09 14:15:36,373 - INFO - Output absolute path: /home/jay/AGSeg_ws/AGSeg/cad2osm/data/data_dxf/SIST-F1.dxf
+2025-04-09 14:15:37,632 - INFO - 成功转换 /home/jay/AGSeg_ws/AGSeg/cad2osm/data/data_dwg/SIST-F1.dwg，用时 1.26 秒

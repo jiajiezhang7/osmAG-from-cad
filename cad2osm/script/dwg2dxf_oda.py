@@ -83,8 +83,8 @@ class ODAConverter:
             input_abs = os.path.abspath(input_file)
             output_abs = os.path.abspath(output_file)
             
-            self.logger.debug(f"Input absolute path: {input_abs}")
-            self.logger.debug(f"Output absolute path: {output_abs}")
+            self.logger.info(f"Input absolute path: {input_abs}")
+            self.logger.info(f"Output absolute path: {output_abs}")
             
             # 检查输入文件权限
             self.logger.debug(f"Input file permissions: {oct(os.stat(input_abs).st_mode)[-3:]}")
@@ -104,7 +104,8 @@ class ODAConverter:
                 output_dir,         # ODA需要目录作为输出
                 'ACAD2018',
                 'DXF',
-                '1',
+                '1',                # 递归标志 (1=启用)
+                '0',                # Audit 标志 (0=禁用) - 基于推测添加 - 正确的
                 input_filename      # 只传入文件名
             ]
             
@@ -208,20 +209,13 @@ class ODAConverter:
         return success_count, fail_count
 
 def main():
+    # --- 在这里指定固定的输入和输出路径 ---
+    hardcoded_input_path = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/data_dwg/SIST-F1.dwg"  # <--- 修改这里
+    hardcoded_output_path = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/data_dxf/SIST-F1.dxf" # <--- 修改这里
+    # ---------------------------------------
+
     parser = argparse.ArgumentParser(
         description='Convert DWG files to DXF format using ODA File Converter'
-    )
-    
-    parser.add_argument(
-        '-i', '--input',
-        required=True,
-        help='Input DWG file or directory'
-    )
-    
-    parser.add_argument(
-        '-o', '--output',
-        required=True,
-        help='Output DXF file or directory'
     )
     
     parser.add_argument(
@@ -245,21 +239,23 @@ def main():
     
     # 处理输入
     try:
-        if os.path.isdir(args.input):
+        # 使用硬编码的路径
+        if os.path.isdir(hardcoded_input_path):
             # 批量转换目录
-            converter.batch_convert(args.input, args.output, args.recursive)
+            converter.batch_convert(hardcoded_input_path, hardcoded_output_path, args.recursive)
         else:
             # 如果输入是文件，但输出是目录，自动构造输出文件名
-            if os.path.isdir(args.output):
-                input_filename = os.path.basename(args.input)
+            if os.path.isdir(hardcoded_output_path):
+                input_filename = os.path.basename(hardcoded_input_path)
                 output_file = os.path.join(
-                    args.output,
+                    hardcoded_output_path,
                     os.path.splitext(input_filename)[0] + '.dxf'
                 )
             else:
-                output_file = args.output
+                # 如果输出也是文件路径
+                output_file = hardcoded_output_path
                 
-            success, message = converter.convert_file(args.input, output_file)
+            success, message = converter.convert_file(hardcoded_input_path, output_file)
             if not success:
                 sys.exit(1)
     except KeyboardInterrupt:
