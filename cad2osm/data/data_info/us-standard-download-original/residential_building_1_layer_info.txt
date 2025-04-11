@@ -1,0 +1,14 @@
+DXF文件图层信息报告
+生成时间: 2025-04-11 14:04:46
+DXF文件: residential_building_1.dxf
+图层总数: 8
+
+图层列表:
+0
+Defpoints
+door
+dwgmodels.com
+furniture
+plaster
+wall
+wind

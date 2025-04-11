@@ -1,7 +1,7 @@
-# dxf_layer_info.py，用以获悉转换后的dxf的图层的信息
 import ezdxf
 import os
 import re # 导入 re 模块
+import argparse # 导入 argparse 模块
 from datetime import datetime
 
 def decode_dxf_unicode(text):
@@ -83,9 +83,9 @@ def extract_layer_info(dxf_file, output_file):
         ]
         
         # 添加图层信息
-        for i, layer_name in enumerate(sorted(layers), 1):
-            output_text.append(f"{i}. {layer_name}")
-        
+        for layer_name in sorted(layers):
+            output_text.append(layer_name) # 只输出图层名称
+
         # 写入文件
         with open(output_file, 'w', encoding='utf-8') as f:
             f.write('\n'.join(output_text))
@@ -95,23 +95,59 @@ def extract_layer_info(dxf_file, output_file):
     except ezdxf.DXFError as e:
         return False, f"DXF文件错误: {str(e)}"
     except Exception as e:
-        return False, f"处理出错: {str(e)}"
+        return False, f"Processing error: {str(e)}"
 
 def main():
-    # --- 在这里指定固定的输入DXF和输出TXT路径 ---
-    hardcoded_dxf_path = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/data_dxf/SIST-F1.dxf"  # <--- 修改这里
-    hardcoded_output_path = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/data_info/SIST-F1_layer_info.txt" # <--- 修改这里
-    # -------------------------------------------
+    # --- 硬编码输入输出路径 ---
+    input_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/data_dxf/us-standard-download"
+    output_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/data_info/us-standard-download-original"
 
-    print(f"\n正在处理文件: {os.path.basename(hardcoded_dxf_path)}")
-    # 使用硬编码路径调用函数
-    success, message = extract_layer_info(hardcoded_dxf_path, hardcoded_output_path)
-    
-    if success:
-        print(f"\n{message}")
-        print(f"输出文件已保存至: {hardcoded_output_path}")
-    else:
-        print(f"\n错误: {message}")
+    # --- 检查输入目录是否存在 --- 
+    if not os.path.isdir(input_dir):
+        print(f"Error: Input directory not found: {input_dir}")
+        return
+
+    # --- 确保输出目录存在 --- 
+    os.makedirs(output_dir, exist_ok=True)
+
+    print(f"Starting DXF layer info extraction...")
+    print(f"Input Directory: {input_dir}")
+    print(f"Output Directory: {output_dir}")
+
+    processed_count = 0
+    error_count = 0
+
+    # --- 递归遍历输入目录 --- 
+    for root, _, files in os.walk(input_dir):
+        for filename in files:
+            # 检查文件扩展名 (忽略大小写)
+            if filename.lower().endswith(".dxf"):
+                dxf_path = os.path.join(root, filename)
+                
+                # 构建相对路径和输出路径
+                relative_path = os.path.relpath(dxf_path, input_dir)
+                base_rel_path, _ = os.path.splitext(relative_path)
+                output_filename = base_rel_path + "_layer_info.txt"
+                output_path = os.path.join(output_dir, output_filename)
+
+                # 确保输出文件的目录存在
+                output_file_dir = os.path.dirname(output_path)
+                os.makedirs(output_file_dir, exist_ok=True)
+
+                print(f"\nProcessing file: {dxf_path}")
+                # 调用提取函数
+                success, message = extract_layer_info(dxf_path, output_path)
+                
+                if success:
+                    print(f"  -> Success: Layer info saved to {output_path}")
+                    processed_count += 1
+                else:
+                    print(f"  -> Error: {message}")
+                    error_count += 1
+
+    print(f"\n--- Processing Complete ---")
+    print(f"Successfully processed: {processed_count} files")
+    print(f"Errors encountered: {error_count} files")
 
 if __name__ == "__main__":
     main()

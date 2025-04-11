@@ -1,0 +1,79 @@
+DXF文件图层信息报告
+生成时间: 2025-04-11 14:05:03
+DXF文件: hotel-ground-floor-plan.dxf
+图层总数: 73
+
+图层列表:
+-ACHSE
+-BAU
+-KUNSTSTOFF
+0
+04_Grafik
+1
+3
+3-0
+A-ABOVE
+A-AREA-TEXT
+A-AXES
+A-AXES-DIMS
+A-AXES-IDEN
+A-AXES-IDEN-NOTE
+A-DOOR
+A-FASAD
+A-HATCH
+A-LANDSCAPE-PLITKA
+A-SECT-DIMS-LEVL
+A-SLAB
+A-STAIR-PLAN-CNCR
+A-Stair
+A-TEXT
+A-TEXT-EXPL
+A-UNDER
+A-WALL-ALL
+A-WALL-BRC
+A-WALL-CONC
+A-WALL-GLASS
+A-лотки и грязезащита
+A_Konstruktionslinie
+B-FURNITURE
+Compression_Tape_Contour
+Defpoints
+Edelstahl
+IA fixed interior
+IA floor
+K3-TEXT
+LWA
+R-SPA door
+R-SPA floor
+R-SPA furniture
+R-SPA glass
+R-SPA hatch
+R-SPA text
+R-SPA wall A
+S38_Compression_Tape_Contour
+TC-EQUIPMENT
+VK-11
+barier
+det 10
+det hatch
+door
+door 1
+dwgmodels.com
+facade
+glass
+glass2
+hole
+k3-coldrooms
+k3-windows
+kone
+line 013
+metall construction
+pl2
+plaster
+rail
+s2
+sistem1
+text
+text2
+wall all
+wall brick_03

@@ -1,0 +1,13 @@
+DXF文件图层信息报告
+生成时间: 2025-04-11 14:05:12
+DXF文件: monastery.dxf
+图层总数: 7
+
+图层列表:
+0
+Defpoints
+axes
+dim
+dwgmodels.com
+hatch
+text

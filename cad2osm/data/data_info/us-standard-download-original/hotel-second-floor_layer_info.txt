@@ -1,0 +1,53 @@
+DXF文件图层信息报告
+生成时间: 2025-04-11 14:05:05
+DXF文件: hotel-second-floor.dxf
+图层总数: 47
+
+图层列表:
+0
+002 - Размеры
+1
+2
+A-ABOVE
+A-AREA-TEXT
+A-AXES
+A-DIM
+A-DOOR
+A-FASAD
+A-Hatch
+A-OTB
+A-SLAB
+A-STAIR-PLAN-CNCR
+A-STAIRS
+A-Stair
+A-TEXT
+A-TEXT-EXPL
+A-WALL-BRC
+A-WALL-BRCK
+A-WALL-CONC
+A-WALL-GK
+A-WALL-GLASS
+A-WALL-GVL
+A-WALL-MOVALE
+A-ОГРАЖДЕНИЕ
+A-ПРОТИВОПОЖАРНЫЕ СТЕНЫ
+A-ЧИСТОВАЯ ОТДЕЛКА
+A-ЭСКИЗ
+A-отделка
+A-поручни
+Defpoints
+K3-TEXT
+LWA
+S-COLS+2
+S-SLAB
+S-WALL
+TC-EQUIPMENT
+concreet
+dwgmodels.com
+k3-coldrooms
+k3-doors
+kone
+Текст
+вк К1
+коллектор отопления
+тонкая 013
