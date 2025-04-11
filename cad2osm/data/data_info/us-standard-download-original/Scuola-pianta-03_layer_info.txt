@@ -1,0 +1,16 @@
+DXF文件图层信息报告
+生成时间: 2025-04-11 14:05:09
+DXF文件: Scuola-pianta-03.dxf
+图层总数: 10
+
+图层列表:
+0
+ARREDI attrezzature - furniture
+Defpoints
+MURATURA sezioni - section wall
+PROIEZIONI - projections
+PROIEZIONI Tratteggiate - dashed
+PROIEZIONI finissime - fine lines
+SEZIONI medie - small section
+VETRATE sezioni - windows sections
+www.archweb.it - All rights reserved

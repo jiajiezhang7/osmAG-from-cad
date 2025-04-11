@@ -1,0 +1,22 @@
+DXF文件图层信息报告
+生成时间: 2025-04-11 14:05:07
+DXF文件: office.dxf
+图层总数: 16
+
+图层列表:
+0
+2
+Defpoints
+Furniture
+Plaster
+San
+Sanitary
+concr
+doors
+dwgmodels.com
+floor
+hatch
+plants
+txt
+wall
+windows line

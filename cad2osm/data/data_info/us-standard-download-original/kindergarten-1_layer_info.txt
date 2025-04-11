@@ -1,0 +1,24 @@
+DXF文件图层信息报告
+生成时间: 2025-04-11 14:05:11
+DXF文件: kindergarten-1.dxf
+图层总数: 18
+
+图层列表:
+0
+1
+2
+3
+4
+5
+AX2
+CIRCULATION
+DIM
+Defpoints
+EXTERIOR_WALLS
+FURNITURE_&_EQUIPMENT
+GLASS
+HIDDEN
+TECH
+columns
+dwgmodels.com
+equipments 2

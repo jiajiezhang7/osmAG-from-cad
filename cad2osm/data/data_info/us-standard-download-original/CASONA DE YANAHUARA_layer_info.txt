@@ -1,0 +1,26 @@
+DXF文件图层信息报告
+生成时间: 2025-04-11 14:05:08
+DXF文件: CASONA DE YANAHUARA.dxf
+图层总数: 20
+
+图层列表:
+0
+0.1
+2
+4
+COLUMNA
+Cotas
+Defpoints
+LAYER4
+LAYER6
+PUERTAS
+Pluma 1
+Pluma 2
+Pluma 8
+Pluma N ° 10
+Pluma N° 6
+Rotulos
+TEXTO
+TEXTOS
+l) Texto chico
+moviliario

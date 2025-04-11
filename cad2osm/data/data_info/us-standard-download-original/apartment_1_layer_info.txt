@@ -1,0 +1,36 @@
+DXF文件图层信息报告
+生成时间: 2025-04-11 14:05:09
+DXF文件: apartment_1.dxf
+图层总数: 30
+
+图层列表:
+0
+DECOR
+Defpoints
+Gypsum_wall
+Hitting
+Marks ceiling
+Sanitari
+Ventilation
+acces
+ceiling
+ceiling dim
+cornice
+dim
+doors & windows
+dwgmodels.com
+electricity
+explication
+floor
+floor hatch
+furnblox
+furnhatch
+furniture
+k
+light
+sanit
+sanitari 2
+socket
+switch
+wall
+windows
