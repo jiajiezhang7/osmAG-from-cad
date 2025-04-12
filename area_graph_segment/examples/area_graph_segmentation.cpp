@@ -388,7 +388,6 @@ int main(int argc, char *argv[]) {
     
     // 传递多边形处理参数
     RMGraph.exportToOsmAG(osm_path.c_str(), simplify_enabled, simplify_tolerance, 
-                          spike_removal_enabled, spike_angle_threshold, spike_distance_threshold);
-    
+        spike_removal_enabled, spike_angle_threshold, spike_distance_threshold);
     return 0;
 }
