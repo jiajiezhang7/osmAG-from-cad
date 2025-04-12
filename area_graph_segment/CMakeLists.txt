@@ -67,7 +67,12 @@ add_library(topo_graph_2d STATIC
   src/cgal/AlphaShape.cpp
   src/qt/QImageVoronoi.cpp
   src/cgal/AlphaShapeRemoval.cpp
-  src/osmAGExport.cpp)
+  src/osmAGExport.cpp
+  src/geometry/GeometryUtils.cpp
+  src/polygon/PolygonProcessor.cpp
+  src/room/RoomProcessor.cpp
+  src/passage/PassageProcessor.cpp
+  src/export/OsmAGExporter.cpp)
 
 # 为topo_graph_2d库添加yaml-cpp依赖
 target_link_libraries(topo_graph_2d yaml-cpp)
