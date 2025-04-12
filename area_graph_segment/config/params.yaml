@@ -1,7 +1,7 @@
 # 地图预处理参数
 map_preprocessing:
   clean_input: false  # 是否对输入图片进行清理
-  resolution: 0.05    # 地图分辨率（根据计算得到 - 走廊宽度2.4m， 54个像素， 2.4/54 = 0.044）
+  resolution: 0.044    # 地图分辨率（根据计算得到 - 走廊宽度2.4m， 54个像素， 2.4/54 = 0.044）
   door_width: 2.8    # 门的宽度   #SIST:2.8 - res=0.05
   corridor_width: 3.0 # 走廊宽度
   noise_percent: 1.5   # 噪声百分比
@@ -11,6 +11,15 @@ map_preprocessing:
 root_node:
   latitude: 31.17947960435
   longitude: 121.59139728509
+  # root_node在PNG图像中的像素位置
+  pixel_x: 3804.0
+  pixel_y: 2801.0
+
+# PNG图像尺寸信息
+png_dimensions:
+  width: 4000.0
+  height: 3360.0
+  resolution: 0.044  # 地图分辨率（米/像素）
 
 # 多边形处理参数
 polygon_processing:

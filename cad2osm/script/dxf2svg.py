@@ -6,6 +6,7 @@ import math
 import os
 import glob
 import numpy as np
+import json
 
 def get_entity_bounds(entity):
     """获取单个实体的边界点"""
@@ -155,6 +156,25 @@ def dxf_to_svg(input_path, output_path, target_size=4000):  # 增加默认分辨
         
         width = (bounds[2] - bounds[0]) * scale
         height = (bounds[3] - bounds[1]) * scale
+        
+        # --- 新增：保存边界信息到 JSON 文件 ---
+        bounds_path = os.path.splitext(output_path)[0] + '.bounds.json'
+        bounds_data = {
+            'min_x_padded': bounds[0],
+            'min_y_padded': bounds[1],
+            'max_x_padded': bounds[2],
+            'max_y_padded': bounds[3],
+            'svg_width_px': width, # 也保存计算出的svg像素尺寸
+            'svg_height_px': height
+        }
+        try:
+            with open(bounds_path, 'w') as f_bounds:
+                json.dump(bounds_data, f_bounds, indent=4)
+            # print(f"Saved bounds to: {bounds_path}")
+        except Exception as e:
+            print(f"Error saving bounds to {bounds_path}: {e}")
+            return False, f"无法保存边界文件: {e}"
+        # --- 结束新增 ---
         
         dwg = svgwrite.Drawing(output_path, 
                              size=(f'{width:.2f}px', f'{height:.2f}px'),

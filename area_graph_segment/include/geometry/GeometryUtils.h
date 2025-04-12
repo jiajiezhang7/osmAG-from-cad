@@ -17,6 +17,12 @@ double calcPolyArea(std::list<topo_geometry::point> &polygon);
 // 将笛卡尔坐标转换为经纬度
 std::pair<double, double> cartesianToLatLon(double x, double y, double root_lat, double root_lon);
 
+// 设置 root_node 在 PNG 中的像素位置
+void setRootNodePixelPosition(double x, double y);
+
+// 设置 PNG 图像的分辨率（米/像素）
+void setResolution(double resolution);
+
 // 计算点到线段的距离
 double pointToLineDistance(const topo_geometry::point& p, const topo_geometry::point& lineStart, const topo_geometry::point& lineEnd);
 
