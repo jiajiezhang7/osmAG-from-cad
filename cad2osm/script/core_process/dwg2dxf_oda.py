@@ -210,8 +210,8 @@ class ODAConverter:
 
 def main():
     # --- 在这里指定固定的输入和输出路径 ---
-    hardcoded_input_path = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/data_dwg/us-standard-download"  # <--- 修改这里
-    hardcoded_output_path = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/data_dxf/us-standard-download" # <--- 修改这里
+    hardcoded_input_path = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/data_dwg/Shanghaitech/teaching_center"
+    hardcoded_output_path = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/data_dxf/ShanghaiTech/teaching_center/original"
     # ---------------------------------------
 
     parser = argparse.ArgumentParser(

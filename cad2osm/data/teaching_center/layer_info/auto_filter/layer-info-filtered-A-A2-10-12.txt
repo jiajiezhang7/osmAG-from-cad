@@ -1,0 +1,6 @@
+0
+A-WALL-CONC
+A2-RI-RF$0$A-GLAZ
+A2-RI-RF$0$A-GLAZ-CWMG
+A2-RI-RF$0$an-wall-prht
+Defpoints
