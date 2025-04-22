@@ -1,0 +1,4 @@
+ODA Warning: Code page conversion is impossible because conversion table for "ansi_936" is missing.
+OdError thrown during writeFile to "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/data_dxf/ShanghaiTech/teaching_center/original/A-A2-10-06.dxf" :
+  Empty Record name: <AcDbBlockReference> (10ADFB)
+

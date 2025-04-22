@@ -1,0 +1,22 @@
+DXF文件图层信息报告
+生成时间: 2025-04-11 14:05:11
+DXF文件: schema-ufficio-15.dxf
+图层总数: 16
+
+图层列表:
+0
+ARREDI attrezzature - furniture
+DEFPOINTS
+MURATURA sezioni - section wall
+MURATURE tratteggi - hatch wall
+PAVIMENTI - flooring
+PILASTRI - structure
+PORTE finestre - doors windows
+PROIEZIONI - projections
+PROIEZIONI Tratteggiate - dashed
+PROIEZIONI finissime - fine lines
+SANITARI
+SCRITTE - TXT
+SEZIONI medie - small section
+VETRATE sezioni - windows sections
+www.archweb.it - All rights reserved

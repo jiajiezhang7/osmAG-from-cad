@@ -245,9 +245,9 @@ def main():
     主函数 - 批量处理DXF文件
     """
     # --- 定义输入输出目录 --- 
-    input_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/data_dxf/original/"
-    output_dxf_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/data_dxf/filtered_trial/"
-    output_layer_info_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST-layer-info-filtered-trial/"
+    input_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/data_dxf/ShanghaiTech/teaching_center/original/"
+    output_dxf_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/data_dxf/ShanghaiTech/teaching_center/filtered_trial/"
+    output_layer_info_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/data_info/ShanghaiTech/teaching_center/layer-info-filtered-trial/"
     # -------------------------
     
     # 确保输出目录存在
@@ -303,29 +303,6 @@ def main():
     print(f"过滤后的DXF文件保存在: {output_dxf_dir}")
     print(f"保留图层信息文件保存在: {output_layer_info_dir}")
     
-    # --- 移除旧的单文件处理逻辑 ---
-    # # 设置输入输出文件路径
-    # input_file = input("请输入DXF文件路径: ").strip('"')
-    # if not os.path.exists(input_file):
-    #     print("错误: 输入文件不存在")
-    #     return
-        
-    # # 生成输出文件名
-    # output_dir = os.path.dirname(input_file) or '.'
-    # base_name = os.path.splitext(os.path.basename(input_file))[0]
-    # timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    # output_file = os.path.join(output_dir, f"{base_name}_filtered_{timestamp}.dxf")
-    
-    # print(f"\n正在处理文件: {os.path.basename(input_file)}")
-    # success, message, log_file = filter_dxf_layers(input_file, output_file)
-    
-    # if success:
-    #     print(f"\n{message}")
-    #     print(f"输出文件已保存至: {output_file}")
-    #     print(f"过滤报告已保存至: {log_file}")
-    # else:
-    #     print(f"\n错误: {message}")
-    # --------------------------------
 
 if __name__ == "__main__":
     main()

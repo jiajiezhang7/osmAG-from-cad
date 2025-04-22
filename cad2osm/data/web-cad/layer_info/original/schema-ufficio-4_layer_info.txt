@@ -1,0 +1,20 @@
+DXF文件图层信息报告
+生成时间: 2025-04-11 14:05:13
+DXF文件: schema-ufficio-4.dxf
+图层总数: 14
+
+图层列表:
+0
+ARREDI attrezzature - furniture
+DEFPOINTS
+MURATURA sezioni - section wall
+PAVIMENTAZIONE - flooring
+PILASTRI struttura - structure
+PORTE finestre - doors windows
+PROIEZIONI - projections
+PROIEZIONI Tratteggiate - dashed
+PROIEZIONI finissime - fine lines
+SEZIONI medie - small section
+VERDE giardino - trees garden
+VETRATE sezioni - windows sections
+www.archweb.it - All rights reserved

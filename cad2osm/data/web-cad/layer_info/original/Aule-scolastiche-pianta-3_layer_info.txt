@@ -1,0 +1,18 @@
+DXF文件图层信息报告
+生成时间: 2025-04-11 14:05:06
+DXF文件: Aule-scolastiche-pianta-3.dxf
+图层总数: 12
+
+图层列表:
+0
+ARREDI attrezzature - furniture
+DEFPOINTS
+MURATURA sezioni - section wall
+PORTE - doors
+PROIEZIONI - projections
+PROIEZIONI finissime - fine lines
+QUOTE - dimension
+SCRITTE - txt
+STRUTTURA - structure
+VETRATE sezioni - windows sections
+www.archweb.it - All rights reserved
