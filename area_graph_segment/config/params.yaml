@@ -46,8 +46,13 @@ polygon_processing:
     angle_threshold: 15.0  # 角度阈值，用于判断是否为尖角
     distance_threshold: 0.30  # 距离阈值，较小的距离阈值会保留更多的曲线细节
 
+  # 小房间过滤
+  small_room_filter:
+    enabled: true      # 是否启用过滤过小房间功能
+    min_area: 10.0     # 小于此面积的房间将被过滤（平方米）
+
   # 小房间合并
   small_room_merge:
-    enabled: false      # 是否启用小房间合并 --- 这部分功能还是跑不通的
+    enabled: false      # 是否启用小房间凸包合并 --- 这部分功能效果并不好
     min_area: 10.0      # 小于此面积的房间将被考虑合并（平方米）
     max_merge_distance: 3.0  # 合并时两个房间中心点的最大距离

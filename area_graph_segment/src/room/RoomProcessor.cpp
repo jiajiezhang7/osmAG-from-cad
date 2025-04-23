@@ -10,6 +10,9 @@
 #include <string>
 #include <iomanip>
 #include <fstream>
+#include <boost/geometry/algorithms/convex_hull.hpp>
+#include <boost/geometry/geometries/multi_point.hpp>
+#include <boost/geometry/geometries/ring.hpp>
 
 namespace RMG {
 namespace RoomProcessor {
@@ -137,17 +140,33 @@ void mergeSmallAdjacentRooms(AreaGraph* areaGraph, double minArea, double maxMer
     
     std::cout << "开始合并小面积相邻房间..." << std::endl;
     
-    // 计算每个房间的面积和中心点
+    // 小房间合并之前的单位转换
+    // 读取配置中的分辨率(米/像素)
+    double resolution = 0.044;
+    try {
+        auto& params = ParamsLoader::getInstance();
+        if (params.params["png_dimensions"] && params.params["png_dimensions"]["resolution"]) {
+            resolution = params.params["png_dimensions"]["resolution"].as<double>();
+        }
+    } catch (...) {}
+    // 像素面积到平方米，米到像素转换
+    double pixelToSqMeter = resolution * resolution;
+    // 将阈值从平方米转换到像素单位
+    double minAreaPixels = minArea / pixelToSqMeter;
+    // 最大中心点距离从米转换到像素
+    double maxMergeDistPixels = maxMergeDistance / resolution;
+    
+    // 计算每个房间的面积(米^2)和中心点(像素)
     std::map<roomVertex*, double> roomAreas;
     std::map<roomVertex*, topo_geometry::point> roomCenters;
     std::vector<roomVertex*> smallRooms;
     
     for (auto room : areaGraph->originSet) {
-        double area = calculateRoomArea(room);
-        roomAreas[room] = area;
+        double areaPx = calculateRoomArea(room);
+        double areaM2 = areaPx * pixelToSqMeter;
+        roomAreas[room] = areaM2;
         roomCenters[room] = calculateRoomCenter(room);
-        
-        if (area < minArea) {
+        if (areaPx < minAreaPixels) {
             smallRooms.push_back(room);
         }
     }
@@ -178,56 +197,52 @@ void mergeSmallAdjacentRooms(AreaGraph* areaGraph, double minArea, double maxMer
             continue;
         }
         
-        // 寻找最佳合并对象
+        // 收集邻居候选（通过通道）
+        std::vector<roomVertex*> neighbors;
+        std::map<roomVertex*, passageEdge*> neighborMap;
+        for (auto passage : areaGraph->passageEList) {
+            if (passage->connectedAreas.size() != 2) continue;
+            roomVertex* nb = nullptr;
+            if (passage->connectedAreas[0] == smallRoom) nb = passage->connectedAreas[1];
+            else if (passage->connectedAreas[1] == smallRoom) nb = passage->connectedAreas[0];
+            if (!nb || mergedRooms.count(nb)) continue;
+            neighbors.push_back(nb);
+            neighborMap[nb] = passage;
+        }
+        // 如无通道邻居，则尝试多边形相邻
+        if (neighbors.empty()) {
+            for (auto candidate : areaGraph->originSet) {
+                if (candidate == smallRoom || mergedRooms.count(candidate)) continue;
+                // 判断是否共享顶点
+                bool adj = false;
+                for (auto &pA : smallRoom->polygon) {
+                    for (auto &pB : candidate->polygon) {
+                        if (GeometryUtils::equalLineVertex(pA, pB)) { adj = true; break; }
+                    }
+                    if (adj) break;
+                }
+                if (adj) {
+                    neighbors.push_back(candidate);
+                    neighborMap[candidate] = nullptr;
+                }
+            }
+        }
+        // 对所有候选邻居评分并选最佳
         roomVertex* bestNeighbor = nullptr;
         double bestScore = -1.0;
         passageEdge* bestPassage = nullptr;
-        
-        // 遍历所有通道，找出与小房间相连的房间
-        for (auto passage : areaGraph->passageEList) {
-            if (passage->connectedAreas.size() != 2) continue;
-            
-            roomVertex* neighbor = nullptr;
-            
-            // 检查通道是否连接了当前小房间
-            if (passage->connectedAreas[0] == smallRoom) {
-                neighbor = passage->connectedAreas[1];
-            } else if (passage->connectedAreas[1] == smallRoom) {
-                neighbor = passage->connectedAreas[0];
-            } else {
-                continue; // 通道不连接当前小房间
-            }
-            
-            // 如果邻居已经被合并，跳过
-            if (mergedRooms.find(neighbor) != mergedRooms.end()) {
-                continue;
-            }
-            
-            // 计算两个房间中心点之间的距离
-            double distance = boost::geometry::distance(
-                roomCenters[smallRoom], roomCenters[neighbor]);
-            
-            // 计算合并分数，考虑多个因素
-            double score = 0;
-            
-            // 1. 距离因素：距离越近越好
-            if (distance < maxMergeDistance) {
-                score += (maxMergeDistance - distance) / maxMergeDistance * 10.0;
-                
-                // 2. 面积因素：如果邻居也是小面积，更值得合并
-                if (roomAreas[neighbor] < minArea * 1.5) {
-                    score += 5.0;
-                }
-                
-                // 3. 形状兼容性：如果合并后形状仍然简单，更好
-                // 这里简化处理，只考虑距离和面积
-                
-                // 更新最佳邻居
-                if (score > bestScore) {
-                    bestScore = score;
-                    bestNeighbor = neighbor;
-                    bestPassage = passage;
-                }
+        for (auto neighbor : neighbors) {
+            // 中心点像素距离
+            double distPx = boost::geometry::distance(roomCenters[smallRoom], roomCenters[neighbor]);
+            // 像素域距离因子
+            double distFactor = std::max(0.0, (maxMergeDistPixels - distPx) / maxMergeDistPixels);
+            double score = distFactor * 10.0;
+            // 面积因素
+            if (roomAreas[neighbor] < minArea * 1.5) score += 5.0;
+            if (score > bestScore) {
+                bestScore = score;
+                bestNeighbor = neighbor;
+                bestPassage = neighborMap[neighbor];
             }
         }
         
@@ -253,8 +268,18 @@ void mergeSmallAdjacentRooms(AreaGraph* areaGraph, double minArea, double maxMer
         roomVertex* smallRoom = op.first;
         roomVertex* targetRoom = op.second;
         
-        // 合并多边形
-        targetRoom->polygon = PolygonProcessor::mergePolygons(smallRoom->polygon, targetRoom->polygon);
+        // 合并为凸包
+        {
+            using MultiPoint = boost::geometry::model::multi_point<topo_geometry::point>;
+            using Ring = boost::geometry::model::ring<topo_geometry::point>;
+            MultiPoint mp;
+            for (auto &p : smallRoom->polygon) mp.push_back(p);
+            for (auto &p : targetRoom->polygon) mp.push_back(p);
+            Ring ring;
+            boost::geometry::convex_hull(mp, ring);
+            targetRoom->polygon.clear();
+            for (auto &p : ring) targetRoom->polygon.push_back(p);
+        }
         
         // 转移小房间的通道到目标房间
         transferPassages(smallRoom, targetRoom);
@@ -274,6 +299,11 @@ void mergeSmallAdjacentRooms(AreaGraph* areaGraph, double minArea, double maxMer
     
     std::cout << "小面积房间合并完成，合并了 " << mergeOperations.size() << " 个房间，删除了 " 
               << passagesToRemove.size() << " 个通道" << std::endl;
+    
+    // 若本轮有合并，递归合并剩余小房间
+    if (!mergeOperations.empty()) {
+        mergeSmallAdjacentRooms(areaGraph, minArea, maxMergeDistance);
+    }
 }
 
 // 打印房间面积排序列表

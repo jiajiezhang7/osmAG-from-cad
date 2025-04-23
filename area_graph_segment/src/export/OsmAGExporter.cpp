@@ -8,6 +8,7 @@
 #include <iostream>
 #include <map>
 #include <set>
+#include <algorithm>
 
 namespace RMG {
 namespace OsmAGExporter {
@@ -105,6 +106,29 @@ void exportToOsmAG(AreaGraph* areaGraph,
     }
 
     std::cout << "优化后房间数量: " << areaGraph->originSet.size() << std::endl;
+
+    // 过滤过小房间（可选）
+    bool filterEnabled = false;
+    double filterMinAreaSqMeter = 10.0;
+    try {
+        auto& params = ParamsLoader::getInstance();
+        if (params.params["polygon_processing"]["small_room_filter"]) {
+            filterEnabled = params.params["polygon_processing"]["small_room_filter"]["enabled"].as<bool>();
+            filterMinAreaSqMeter = params.params["polygon_processing"]["small_room_filter"]["min_area"].as<double>();
+        }
+    } catch (...) {}
+    if (filterEnabled) {
+        double pixelToSqMeter = 0.044 * 0.044;
+        double minRoomAreaInPixels = filterMinAreaSqMeter / pixelToSqMeter;
+        size_t originalCount = areaGraph->originSet.size();
+        auto it = std::remove_if(areaGraph->originSet.begin(), areaGraph->originSet.end(),
+            [&](roomVertex* room){
+                double pixelArea = RoomProcessor::calculateRoomArea(room);
+                return pixelArea < minRoomAreaInPixels;
+            });
+        areaGraph->originSet.erase(it, areaGraph->originSet.end());
+        std::cout << "过滤过小房间: 原有" << originalCount << "个, 过滤后" << areaGraph->originSet.size() << "个" << std::endl;
+    }
 
     // 用于收集通道端点信息，后续传给优化函数
     std::vector<std::pair<std::pair<topo_geometry::point, topo_geometry::point>, std::pair<roomVertex*, roomVertex*>>> passagePointsForOptimization;

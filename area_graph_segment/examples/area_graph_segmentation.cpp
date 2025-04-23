@@ -370,16 +370,22 @@ int main(int argc, char *argv[]) {
     RMGraph.draw(RMGIm);
     // 检查小房间合并是否启用
     bool merge_enabled = false;
+    bool filter_enabled = false;
     try {
         auto& params = ParamsLoader::getInstance();
         if (params.params["polygon_processing"]["small_room_merge"]) {
             merge_enabled = params.params["polygon_processing"]["small_room_merge"]["enabled"].as<bool>();
         }
+        if (params.params["polygon_processing"]["small_room_filter"]) {
+            filter_enabled = params.params["polygon_processing"]["small_room_filter"]["enabled"].as<bool>();
+        }
     } catch (const std::exception& e) {
         std::cout << "警告: 读取小房间合并参数失败，使用默认值" << std::endl;
     }
     
-    string suffix = merge_enabled ? "_merged" : "";
+    string suffix = "";
+    if (merge_enabled) suffix += "_merged";
+    if (filter_enabled) suffix += "_filtered";
     string room_graph_path = output_dir + "/" + base_name + NumberToString(nearint(a * 100)) + suffix + "_roomGraph.png";
     RMGIm.save(room_graph_path.c_str());
     
