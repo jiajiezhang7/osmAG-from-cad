@@ -10,9 +10,11 @@
 #include <string>
 #include <iomanip>
 #include <fstream>
-#include <boost/geometry/algorithms/convex_hull.hpp>
-#include <boost/geometry/geometries/multi_point.hpp>
-#include <boost/geometry/geometries/ring.hpp>
+#include <boost/geometry/algorithms/union.hpp>
+#include <boost/geometry/geometries/multi_polygon.hpp>
+#include <boost/geometry/algorithms/correct.hpp>
+#include <boost/geometry/geometries/polygon.hpp>
+#include <boost/geometry/algorithms/area.hpp>
 
 namespace RMG {
 namespace RoomProcessor {
@@ -268,17 +270,25 @@ void mergeSmallAdjacentRooms(AreaGraph* areaGraph, double minArea, double maxMer
         roomVertex* smallRoom = op.first;
         roomVertex* targetRoom = op.second;
         
-        // 合并为凸包
+        // 合并为外轮廓（多边形并集，保留原节点）
         {
-            using MultiPoint = boost::geometry::model::multi_point<topo_geometry::point>;
-            using Ring = boost::geometry::model::ring<topo_geometry::point>;
-            MultiPoint mp;
-            for (auto &p : smallRoom->polygon) mp.push_back(p);
-            for (auto &p : targetRoom->polygon) mp.push_back(p);
-            Ring ring;
-            boost::geometry::convex_hull(mp, ring);
+            using Polygon = boost::geometry::model::polygon<topo_geometry::point>;
+            using MultiPolygon = boost::geometry::model::multi_polygon<Polygon>;
+            Polygon p1, p2;
+            for (auto &pt : smallRoom->polygon) p1.outer().push_back(pt);
+            for (auto &pt : targetRoom->polygon) p2.outer().push_back(pt);
+            boost::geometry::correct(p1);
+            boost::geometry::correct(p2);
+            MultiPolygon result;
+            boost::geometry::union_(p1, p2, result);
+            double maxA = 0.0;
+            Polygon best;
+            for (auto const &mp : result) {
+                double a = boost::geometry::area(mp);
+                if (a > maxA) { maxA = a; best = mp; }
+            }
             targetRoom->polygon.clear();
-            for (auto &p : ring) targetRoom->polygon.push_back(p);
+            for (auto const &pt : best.outer()) { targetRoom->polygon.push_back(pt); }
         }
         
         // 转移小房间的通道到目标房间

@@ -53,6 +53,6 @@ polygon_processing:
 
   # 小房间合并
   small_room_merge:
-    enabled: false      # 是否启用小房间凸包合并 --- 这部分功能效果并不好
+    enabled: true      # 是否启用小房间凸包合并 --- 这部分功能效果并不好
     min_area: 10.0      # 小于此面积的房间将被考虑合并（平方米）
     max_merge_distance: 3.0  # 合并时两个房间中心点的最大距离
