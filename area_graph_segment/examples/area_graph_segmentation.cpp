@@ -44,6 +44,7 @@ Steps:
 #include "Denoise.h"
 #include "utils/ParamsLoader.h"
 #include <yaml-cpp/yaml.h>
+#include "room/RoomProcessor.h"
 
 using namespace std;
 namespace fs = boost::filesystem;
@@ -389,5 +390,8 @@ int main(int argc, char *argv[]) {
     // 传递多边形处理参数
     RMGraph.exportToOsmAG(osm_path.c_str(), simplify_enabled, simplify_tolerance, 
         spike_removal_enabled, spike_angle_threshold, spike_distance_threshold);
+    
+    // 输出房间面积排序CSV和柱状图数据
+    RMG::RoomProcessor::printRoomAreasSorted(&RMGraph);
     return 0;
 }
