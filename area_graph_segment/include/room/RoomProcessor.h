@@ -23,6 +23,9 @@ double calculateRoomArea(roomVertex* room);
 // 计算房间中心点
 topo_geometry::point calculateRoomCenter(roomVertex* room);
 
+// 打印房间面积排序列表
+void printRoomAreasSorted(AreaGraph* areaGraph);
+
 } // namespace RoomProcessor
 } // namespace RMG
 

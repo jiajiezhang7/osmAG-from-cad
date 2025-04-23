@@ -1,10 +1,15 @@
 #include "room/RoomProcessor.h"
 #include "geometry/GeometryUtils.h"
 #include "polygon/PolygonProcessor.h"
+#include "utils/ParamsLoader.h"
 #include <algorithm>
 #include <iostream>
 #include <map>
 #include <set>
+#include <vector>
+#include <string>
+#include <iomanip>
+#include <fstream>
 
 namespace RMG {
 namespace RoomProcessor {
@@ -269,6 +274,49 @@ void mergeSmallAdjacentRooms(AreaGraph* areaGraph, double minArea, double maxMer
     
     std::cout << "小面积房间合并完成，合并了 " << mergeOperations.size() << " 个房间，删除了 " 
               << passagesToRemove.size() << " 个通道" << std::endl;
+}
+
+// 打印房间面积排序列表
+void printRoomAreasSorted(AreaGraph* areaGraph) {
+    if (areaGraph->originSet.empty()) {
+        std::cout << "没有房间数据可输出" << std::endl;
+        return;
+    }
+    
+    // 使用默认分辨率（米/像素）
+    double resolution = 0.044;
+    
+    // 像素平方到平方米的转换系数
+    double pixelToSqMeter = resolution * resolution;
+    
+    std::vector<std::pair<double, roomVertex*>> areas;
+    for (auto room : areaGraph->originSet) {
+        // 计算像素面积并转换为平方米
+        double pixelArea = calculateRoomArea(room);
+        double sqMeterArea = pixelArea * pixelToSqMeter;
+        areas.emplace_back(sqMeterArea, room);
+    }
+    std::sort(areas.begin(), areas.end(), [](const std::pair<double, roomVertex*>& a, const std::pair<double, roomVertex*>& b) {
+        return a.first > b.first;
+    });
+    
+    // 导出 CSV 供 Python 绘图（已转换为平方米）
+    std::ofstream csv("room_areas.csv");
+    for (auto &p : areas) {
+        csv << "room_" << p.second->roomId << "," << p.first << "\n";
+    }
+    csv.close();
+    std::cout << "已导出房间面积CSV: room_areas.csv (单位: 平方米)" << std::endl;
+    
+    std::cout << "房间面积排序 (从大到小, 单位: 平方米):" << std::endl;
+    int maxBarWidth = 50;
+    double maxArea = areas.front().first;
+    for (auto &p : areas) {
+        int barLen = maxArea > 0 ? static_cast<int>(p.first / maxArea * maxBarWidth) : 0;
+        std::string bar(barLen, '#');
+        std::cout << std::setw(12) << ("room_" + std::to_string(p.second->roomId))
+                  << " |" << bar << " " << std::fixed << std::setprecision(2) << p.first << std::endl;
+    }
 }
 
 // 计算房间面积

@@ -429,6 +429,7 @@ void exportToOsmAG(AreaGraph* areaGraph,
 
     // 遍历所有房间，生成节点ID（使用优化后的多边形）
     for (auto roomVtx : areaGraph->originSet) {
+        if (roomVtx->polygon.size() < 3) continue;
         std::vector<int> nodeIds;
 
         // 从优化后的房间多边形中提取所有点
@@ -471,6 +472,7 @@ void exportToOsmAG(AreaGraph* areaGraph,
 
     // 在这里 originSet中已经有了"重复""的多边形
     for (auto roomVtx : areaGraph->originSet) {
+        if (roomVtx->polygon.size() < 3) continue;
 
         // 记录这个房间ID已经被处理
         processedRoomIds.insert(roomVtx->roomId);
