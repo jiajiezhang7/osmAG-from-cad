@@ -118,16 +118,78 @@ void exportToOsmAG(AreaGraph* areaGraph,
         }
     } catch (...) {}
     if (filterEnabled) {
+        std::cout << "开始过滤小房间..." << std::endl;
         double pixelToSqMeter = 0.044 * 0.044;
         double minRoomAreaInPixels = filterMinAreaSqMeter / pixelToSqMeter;
         size_t originalCount = areaGraph->originSet.size();
-        auto it = std::remove_if(areaGraph->originSet.begin(), areaGraph->originSet.end(),
-            [&](roomVertex* room){
-                double pixelArea = RoomProcessor::calculateRoomArea(room);
-                return pixelArea < minRoomAreaInPixels;
-            });
-        areaGraph->originSet.erase(it, areaGraph->originSet.end());
-        std::cout << "过滤过小房间: 原有" << originalCount << "个, 过滤后" << areaGraph->originSet.size() << "个" << std::endl;
+        
+        // 采用最简单稳健的方法：简单地保留面积足够大的房间
+        std::vector<roomVertex*> retainedRooms;
+        for (roomVertex* room : areaGraph->originSet) {
+            double pixelArea = RoomProcessor::calculateRoomArea(room);
+            if (pixelArea >= minRoomAreaInPixels) {
+                retainedRooms.push_back(room);
+            }
+        }
+        
+        std::cout << "过滤过小房间: 原有" << originalCount << "个, 过滤后" << retainedRooms.size() << "个" << std::endl;
+        
+        // 更新originSet为保留的房间
+        areaGraph->originSet = retainedRooms;
+        
+        // 创建有效房间集合用于快速查找
+        std::cout << "为有效房间创建查找集..." << std::endl;
+        std::unordered_set<roomVertex*> validRooms(areaGraph->originSet.begin(), areaGraph->originSet.end());
+        
+        // 接下来处理通道，采用更简单的方法
+        std::cout << "开始处理通道..." << std::endl;
+        size_t originalPassageCount = areaGraph->passageEList.size();
+        
+        // 创建一个新的通道列表而不是修改原列表
+        std::list<passageEdge*> newPassageList;
+        
+        for (auto passage : areaGraph->passageEList) {
+            if (!passage) {
+                std::cout << "警告：发现空通道指针" << std::endl;
+                continue;
+            }
+            
+            // 检查通道是否有效（至少连接两个有效房间）
+            bool isValid = passage->connectedAreas.size() >= 2;
+            
+            if (isValid) {
+                // 检查通道连接的所有房间是否都有效
+                for (auto connectedRoom : passage->connectedAreas) {
+                    if (!connectedRoom || validRooms.find(connectedRoom) == validRooms.end()) {
+                        isValid = false;
+                        break;
+                    }
+                }
+            }
+            
+            if (isValid) {
+                // 保留有效通道
+                newPassageList.push_back(passage);
+            } else {
+                // 在删除通道前，从所有房间的passages列表中移除这个通道的引用
+                for (auto room : areaGraph->originSet) {
+                    if (!room) continue;
+                    
+                    auto it = std::find(room->passages.begin(), room->passages.end(), passage);
+                    if (it != room->passages.end()) {
+                        room->passages.erase(it);
+                    }
+                }
+                
+                // 安全删除无效通道
+                delete passage;
+            }
+        }
+        
+        // 用新的通道列表替换原列表
+        areaGraph->passageEList = newPassageList;
+        
+        std::cout << "删除无效通道: 原有" << originalPassageCount << "个, 过滤后" << areaGraph->passageEList.size() << "个" << std::endl;
     }
 
     // 用于收集通道端点信息，后续传给优化函数
