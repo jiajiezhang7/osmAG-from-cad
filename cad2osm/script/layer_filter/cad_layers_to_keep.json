@@ -1,0 +1,25 @@
+{
+  "NCS": {
+    "description": "US National CAD Standard (Architecture layers)",
+    "layers": [
+      "A-WALL",
+      "A-STAIR",
+      "A-WIND",
+      "A-WINDOW"
+    ]
+  },
+  "GB/T": {
+    "description": "Chinese National Standard (Architecture layers, includes both Chinese and English examples based on document structure/inference)",
+    "layers_chinese": [
+      "建-墙",
+      "建-梯",
+      "建-窗"
+    ],
+    "layers_english": [
+      "A-WALL",
+      "A-STAIR",
+      "A-WIND",
+      "A-WINDOW"
+    ]
+  }
+}
