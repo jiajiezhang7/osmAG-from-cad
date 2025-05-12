@@ -84,3 +84,15 @@ pixel_y = svg_height - (dxf_y - min_y_padded) * scale
 4. 经纬度到像素坐标的转换实现了与`WGS84toCartesian.h`相同的投影计算方法
 5. 脚本会自动尝试加载`area_graph_segment/config/params.yaml`配置文件
 6. 如果找不到默认配置文件，脚本将使用硬编码的默认参数：root_lat=31.17947960435，root_lon=121.59139728509，root_pixel_x=3804.0，root_pixel_y=2801.0，resolution=0.044
+
+
+
+<!-- python /home/jay/AGSeg_ws/AGSeg/cad2osm/script/core_process/add_text_to_osm.py \
+--text-json /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/extract_text/SIST-F1.json \
+--bounds-json /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/img/svg_manual_filter/SIST-F1-filtered_new.bounds.json \
+--input-osm /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/ag_osm/SIST-F1_clear_edited260_filtered_osmAG.osm \
+--output-osm /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/ag_osm/SIST-F1_texted.osm \
+--config /home/jay/AGSeg_ws/AGSeg/cad2osm/config/params.yaml \
+--visualize 
+--output-mapping-json /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/ag_osm/SIST-F1_mapping.json
+-->

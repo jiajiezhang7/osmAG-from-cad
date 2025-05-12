@@ -161,13 +161,14 @@ def latlon_to_pixel(lat, lon, root_lat, root_lon, root_pixel_x, root_pixel_y, re
     return pixel_x, pixel_y
 
 
-def extract_room_polygons(osm_root, config=None):
+def extract_room_polygons(osm_root, config=None, padding_ratio=0.03):
     """
     从OSM XML中提取房间多边形
 
     参数:
         osm_root: OSM XML根元素
         config: 配置信息，包含root_node坐标和分辨率
+        padding_ratio: 边缘空隙比例，默认为0.03（3%），与dxf2svg.py保持一致
 
     返回:
         包含房间多边形的列表
@@ -189,6 +190,10 @@ def extract_room_polygons(osm_root, config=None):
 
         if 'png_dimensions' in config and 'resolution' in config['png_dimensions']:
             resolution = config['png_dimensions'].get('resolution', resolution)
+            
+        # 从配置中读取边缘空隙比例
+        if 'coordinate_conversion' in config and 'padding_ratio' in config['coordinate_conversion']:
+            padding_ratio = config['coordinate_conversion'].get('padding_ratio', padding_ratio)
 
     print(f"Using coordinate conversion parameters:")
     print(f"  root_lat: {root_lat}, root_lon: {root_lon}")
@@ -205,6 +210,7 @@ def extract_room_polygons(osm_root, config=None):
 
     # 存储所有房间信息
     rooms = []
+    all_pixel_points = []  # 用于计算整体边界
 
     # 查找所有way元素
     for way in osm_root.findall(".//way"):
@@ -251,6 +257,7 @@ def extract_room_polygons(osm_root, config=None):
                 )
 
                 polygon.append([pixel_x, pixel_y])
+                all_pixel_points.append([pixel_x, pixel_y])  # 收集所有像素点用于计算边界
 
         # 添加房间信息
         rooms.append({
@@ -260,8 +267,67 @@ def extract_room_polygons(osm_root, config=None):
             'polygon': polygon,
             'latlon_polygon': latlon_polygon  # 保存原始经纬度坐标以便参考
         })
-
-    return rooms
+    
+    # 应用与dxf2svg.py相同的边缘空隙处理
+    if all_pixel_points:
+        # 计算边界
+        xs = [p[0] for p in all_pixel_points]
+        ys = [p[1] for p in all_pixel_points]
+        min_x = min(xs)
+        max_x = max(xs)
+        min_y = min(ys)
+        max_y = max(ys)
+        
+        # 计算边缘空隙
+        width = max_x - min_x
+        height = max_y - min_y
+        base_dimension = max(width, height)
+        padding = base_dimension * padding_ratio if base_dimension > 0 else 1.0
+        
+        # 应用边缘空隙到边界
+        min_x_padded = min_x - padding
+        min_y_padded = min_y - padding
+        max_x_padded = max_x + padding
+        max_y_padded = max_y + padding
+        padded_width = max_x_padded - min_x_padded
+        padded_height = max_y_padded - min_y_padded
+        
+        # 计算缩放因子（与dxf2svg.py中normalize_coordinates函数类似）
+        if padded_width > padded_height:
+            scale = padded_width / width
+        else:
+            scale = padded_height / height
+        
+        # 添加边界信息到返回结果
+        boundary_info = {
+            'min_x': min_x,
+            'min_y': min_y,
+            'max_x': max_x,
+            'max_y': max_y,
+            'min_x_padded': min_x_padded,
+            'min_y_padded': min_y_padded,
+            'max_x_padded': max_x_padded,
+            'max_y_padded': max_y_padded,
+            'padding': padding,
+            'padding_ratio': padding_ratio,
+            'scale': scale
+        }
+        
+        print(f"应用了{padding_ratio*100:.1f}%的边缘空隙到房间边界（与dxf2svg.py相同）")
+        print(f"原始边界: ({min_x:.2f}, {min_y:.2f}) 到 ({max_x:.2f}, {max_y:.2f})")
+        print(f"添加空隙后边界: ({min_x_padded:.2f}, {min_y_padded:.2f}) 到 ({max_x_padded:.2f}, {max_y_padded:.2f})")
+        
+        # 返回带有边界信息的结果
+        return {
+            'rooms': rooms,
+            'boundary': boundary_info
+        }
+    
+    # 如果没有点，只返回房间列表
+    return {
+        'rooms': rooms,
+        'boundary': None
+    }
 
 
 def main():
@@ -316,14 +382,21 @@ def main():
         return
 
     # 提取房间多边形
-    rooms = extract_room_polygons(osm_root, config)
+    result = extract_room_polygons(osm_root, config)
+    
+    # 从结果中获取房间列表和边界信息
+    rooms = result['rooms']
+    boundary = result['boundary']
 
     # 保存结果
-    success = save_json_file(rooms, args.output_json)
+    success = save_json_file(result, args.output_json)
 
     if success:
         print(f"Successfully extracted {len(rooms)} room polygons.")
         print(f"Each room contains both pixel coordinates ('polygon') and original lat/lon coordinates ('latlon_polygon').")
+        if boundary:
+            print(f"Boundary information with {boundary['padding_ratio']*100:.1f}% padding is also included in the output.")
+            print(f"This ensures consistent coordinate transformation with dxf2svg.py.")
 
 
 if __name__ == "__main__":

@@ -3,9 +3,20 @@
 """
 匹配文本标签到房间脚本
 
-此脚本读取转换后的文本像素坐标和AreaGraph生成的房间多边形数据，
-将文本标签匹配到对应的房间，并生成包含房间ID和文本标签的映射关系。
-可以选择直接更新osmAG.osm文件，将匹配到的文本赋值给房间的name标签。
+输入：
+    包含像素坐标的文本JSON文件
+    包含房间多边形的JSON文件
+    可选的osmAG.osm文件（用于更新）
+
+输出：
+    文本到房间的映射关系JSON文件
+    可选的更新后的osmAG.osm文件
+
+工作原理：
+    使用Shapely库判断文本点是否在房间多边形内
+    如果不在多边形内，计算点到多边形的最小距离
+    根据位置关系（内部或附近）建立映射
+    可选择直接更新OSM文件，将匹配到的文本设置为房间的name标签
 
 用法:
     python match_text_to_rooms.py --text-json <pixel_text.json> --rooms-json <rooms.json> --output-json <mapping.json> [--osm-file <osmAG.osm>] [--update-osm]

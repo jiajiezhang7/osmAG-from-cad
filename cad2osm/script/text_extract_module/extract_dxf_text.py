@@ -1,9 +1,47 @@
+# 输入：
+    # DXF文件（CAD格式文件）
+    # 目标图层名称（默认为'I—平面—文字'）
+
+# 输出：
+    # JSON文件，包含提取的文本内容和它们在DXF中的坐标
+
+# 工作原理：
+    # 使用ezdxf库读取DXF文件
+    # 解码DXF中的Unicode转义序列（特别是处理中文字符）
+    # 提取指定图层中的TEXT、MTEXT实体和INSERT实体的属性文本
+    # 过滤掉不需要的文本元素（如特级防火卷帘、排风井等非房间名称）
+    # 保存文本内容及其插入点坐标
+
 import ezdxf
 import os
 import json
 import argparse
 from pathlib import Path
 import re # Import re module for decoding function
+import yaml
+
+# 定义需要过滤的文本列表
+FILTER_TEXT_LIST = [
+    "特级防火卷帘", 
+    "防火卷帘",
+    "排风井", 
+    "暖水", 
+    "残疾人出入口",
+    "特级",
+    "防火",
+    "送风",
+    "排风",
+    "风井",
+    "水井",
+    "挡烟垂壁",
+    "上",
+    "下",
+    "自动玻璃门",
+    "入口",
+    "弱电间",
+    "排烟井",
+
+]
 
 # --- Copied decoding function from dxf_layer_info.py ---
 def decode_dxf_unicode(text):
@@ -55,6 +93,14 @@ def decode_dxf_unicode(text):
     return decoded_text
 # --- End of copied function ---
 
+def should_filter_text(text):
+    """检查文本是否应该被过滤掉"""
+    # 如果文本完全匹配过滤列表中的任何一项，则过滤掉
+    for filter_text in FILTER_TEXT_LIST:
+        if filter_text in text:
+            return True
+    return False
+
 def extract_text_from_dxf(dxf_path, output_dir, target_layer):
     """Extracts text from entities on a specific layer, decoding names and content."""
     try:
@@ -68,6 +114,7 @@ def extract_text_from_dxf(dxf_path, output_dir, target_layer):
         return
 
     extracted_data = []
+    filtered_count = 0
     # Process INSERT entities
     for entity in msp.query('INSERT'):
         # Decode the layer name before comparison
@@ -83,13 +130,15 @@ def extract_text_from_dxf(dxf_path, output_dir, target_layer):
 
                 cleaned_text = text_content.strip()
 
-                if cleaned_text:
+                if cleaned_text and not should_filter_text(cleaned_text):
                     extracted_data.append({
                         "block_name": block_name,
                         "attribute_tag": attrib_tag,
                         "text": cleaned_text,
                         "insert_point": [insert_point.x, insert_point.y, insert_point.z]
                     })
+                elif cleaned_text:
+                    filtered_count += 1
 
     # Process TEXT and MTEXT entities
     for entity in msp.query('TEXT MTEXT'):
@@ -108,16 +157,20 @@ def extract_text_from_dxf(dxf_path, output_dir, target_layer):
 
             cleaned_text = text_content.strip()
 
-            if cleaned_text:
+            if cleaned_text and not should_filter_text(cleaned_text):
                 extracted_data.append({
                     "entity_type": entity_type,
                     "text": cleaned_text,
                     "insert_point": [insert_point.x, insert_point.y, insert_point.z]
                 })
+            elif cleaned_text:
+                filtered_count += 1
 
     if not extracted_data:
         print(f"No relevant text entities (decoded layer '{target_layer}') found in {Path(dxf_path).name}")
         return
+        
+    print(f"提取了 {len(extracted_data)} 个文本元素，过滤掉 {filtered_count} 个不相关文本元素")
 
     # Prepare output JSON file path
     output_filename = Path(dxf_path).stem + ".json"
@@ -130,20 +183,34 @@ def extract_text_from_dxf(dxf_path, output_dir, target_layer):
     try:
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(extracted_data, f, ensure_ascii=False, indent=4)
-        print(f"Successfully extracted decoded text from layer '{target_layer}' to: {output_path}")
+        print(f"成功从图层 '{target_layer}' 提取文本并保存到: {output_path}")
+        print(f"总共提取了 {len(extracted_data)} 个文本元素，过滤掉 {filtered_count} 个不相关文本元素")
     except IOError:
         print(f"Error: Cannot write JSON file: {output_path}")
     except Exception as e:
         print(f"An unexpected error occurred while writing JSON for {dxf_path}: {e}")
 
+def load_yaml_config(config_path):
+    """加载YAML配置文件"""
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f)
+        print(f"已加载配置文件: {config_path}")
+        return config
+    except Exception as e:
+        print(f"警告: 无法加载配置文件 {config_path}: {e}")
+        return None
+
 def main():
     parser = argparse.ArgumentParser(description='Extract decoded TEXT, MTEXT, or ATTRIB text from a specific layer in DXF files.')
-    parser.add_argument('--input-dir', type=str, default='/home/jay/AGSeg_ws/AGSeg/cad2osm/data/data_dxf/original',
+    parser.add_argument('--input-dir', type=str, default='/home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/dxf/original',
                         help='Directory containing the input DXF files.')
-    parser.add_argument('--output-dir', type=str, default='/home/jay/AGSeg_ws/AGSeg/cad2osm/data/extracted_text',
+    parser.add_argument('--output-dir', type=str, default='/home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/extract_text',
                         help='Directory to save the output JSON files.')
     parser.add_argument('--layer', type=str, default='I—平面—文字',
                         help='The specific layer to extract text from.')
+    parser.add_argument('--config', type=str, default='/home/jay/AGSeg_ws/AGSeg/area_graph_segment/config/params.yaml',
+                        help='配置文件路径')
 
     args = parser.parse_args()
 

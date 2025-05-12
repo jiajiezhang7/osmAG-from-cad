@@ -16,6 +16,10 @@ import matplotlib.colors as mcolors
 import random
 import sys
 import os
+import matplotlib
+# 设置matplotlib支持中文显示
+matplotlib.rcParams['font.sans-serif'] = ['Noto Sans CJK SC', 'AR PL UMing CN', 'Droid Sans Fallback', 'DejaVu Sans', 'sans-serif']  # 使用系统中已有的中文字体
+matplotlib.rcParams['axes.unicode_minus'] = False  # 解决保存图像时负号'-'显示为方块的问题
 
 # 添加父目录到Python路径
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -39,17 +43,16 @@ from text_extract_module.match_text_to_rooms import point_in_polygon, distance_t
     # 匹配关系JSON文件
 # 整合方案
 # 整合后的脚本将执行以下流程：
+    # 从osmAG.osm文件中提取房间多边形信息
+    # 将DXF文本坐标转换为像素坐标
+    # 将文本标签匹配到房间
+    # 更新osmAG.osm文件中的房间名称
+    # 整合后的脚本将只需要以下输入：
 
-# 从osmAG.osm文件中提取房间多边形信息
-# 将DXF文本坐标转换为像素坐标
-# 将文本标签匹配到房间
-# 更新osmAG.osm文件中的房间名称
-# 整合后的脚本将只需要以下输入：
-
-# osmAG.osm文件路径
-# extracted_text.json文件路径
-# .bounds.json文件路径
-# 可选的配置文件路径
+    # osmAG.osm文件路径
+    # extracted_text.json文件路径
+    # .bounds.json文件路径
+    # 可选的配置文件路径
 
 
 def load_osm_file(file_path):
@@ -89,20 +92,22 @@ def visualize_matching(rooms_data, text_data, mapping_result, output_path):
         ax.set_xlim(min(all_x) - margin, max(all_x) + margin)
         ax.set_ylim(min(all_y) - margin, max(all_y) + margin)
 
-    # 为每个房间ID分配一个随机颜色
+    # 为每个房间ID分配一个较深的颜色
     room_colors = {}
     for room in rooms_data:
         room_id = room['id']
-        room_colors[room_id] = np.random.rand(3,)  # 随机RGB颜色
+        # 使用更深的颜色，限制颜色亮度范围
+        base_color = np.random.rand(3,) * 0.8  # 通过乘以0.7使颜色更深
+        room_colors[room_id] = base_color
 
     # 绘制所有房间多边形
     for room in rooms_data:
         room_id = room['id']
         polygon = room['polygon']
 
-        # 创建matplotlib多边形对象
-        poly = MplPolygon(polygon, closed=True, alpha=0.4,
-                         facecolor=room_colors.get(room_id, (0.5, 0.5, 0.5)))
+        # 创建matplotlib多边形对象，使用更深的颜色和更高的不透明度
+        poly = MplPolygon(polygon, closed=True, alpha=0.7,
+                         facecolor=room_colors.get(room_id, (0.3, 0.3, 0.3)))
         ax.add_patch(poly)
 
         # 在多边形中心添加房间ID标签
@@ -110,7 +115,7 @@ def visualize_matching(rooms_data, text_data, mapping_result, output_path):
             center_x = sum(p[0] for p in polygon) / len(polygon)
             center_y = sum(p[1] for p in polygon) / len(polygon)
             ax.text(center_x, center_y, f"ID:{room_id}", ha='center', va='center',
-                   fontsize=8, color='black', fontweight='bold')
+                   fontsize=8, color='white', fontweight='bold')
 
     # 绘制所有文本标签
     for text_item in text_data:
@@ -119,34 +124,10 @@ def visualize_matching(rooms_data, text_data, mapping_result, output_path):
         ax.plot(x, y, 'ro', markersize=4)  # 红色点表示文本位置
         ax.text(x, y+10, text, ha='center', va='bottom', fontsize=8, color='red')
 
-    # 绘制匹配关系
-    for room_id, texts in mapping_result['matches'].items():
-        for text_match in texts:
-            text_point = text_match['pixel_point']
-            match_type = text_match['match_type']
-
-            # 找到对应的房间多边形中心
-            room_polygon = None
-            for room in rooms_data:
-                if room['id'] == room_id:
-                    room_polygon = room['polygon']
-                    break
-
-            if room_polygon:
-                center_x = sum(p[0] for p in room_polygon) / len(room_polygon)
-                center_y = sum(p[1] for p in room_polygon) / len(room_polygon)
-
-                # 绘制从文本到房间中心的连线
-                line_style = '-' if match_type == 'inside' else '--'  # 实线表示inside，虚线表示nearby
-                line_color = 'green' if match_type == 'inside' else 'blue'
-                ax.plot([text_point[0], center_x], [text_point[1], center_y],
-                       line_style, color=line_color, linewidth=0.5, alpha=0.7)
-
-    # 添加图例
+    # 删除匹配连线的绘制代码
+    # 只添加文本位置的图例
     from matplotlib.lines import Line2D
     legend_elements = [
-        Line2D([0], [0], color='green', linestyle='-', lw=2, label='Inside Match'),
-        Line2D([0], [0], color='blue', linestyle='--', lw=2, label='Nearby Match'),
         Line2D([0], [0], marker='o', color='w', markerfacecolor='r', markersize=8, label='Text Position'),
     ]
     ax.legend(handles=legend_elements, loc='upper right')
@@ -302,12 +283,20 @@ def main():
 
     # --- 4. Extract Room Polygons and Convert to Pixel Coordinates ---
     print("\nExtracting room polygons and converting to pixel coordinates...")
-    rooms_data_pixel_raw = extract_room_polygons(osm_root, config) # Store raw extraction result
+    result = extract_room_polygons(osm_root, config) # 获取包含房间和边界信息的结果
+    rooms_data_pixel_raw = result['rooms'] # 从结果中获取房间列表
+    boundary_info = result['boundary'] # 从结果中获取边界信息
+    
     print(f"Extracted and converted coordinates for {len(rooms_data_pixel_raw)} potential room polygons.")
     if not rooms_data_pixel_raw:
         print("Warning: No rooms found or extracted from the OSM file.")
         # Decide whether to proceed or exit if no rooms are found
         # For now, we'll proceed but matching will likely yield no results.
+        
+    # 如果有边界信息，输出边界信息
+    if boundary_info:
+        print(f"Using boundary information with {boundary_info['padding_ratio']*100:.1f}% padding.")
+        print(f"This ensures consistent coordinate transformation with dxf2svg.py.")
 
     # --- Filter out invalid polygons for Shapely ---
     rooms_data_pixel = []
@@ -398,6 +387,10 @@ def main():
             'rooms_with_matches': len(mapping_result['matches']),
             'rooms_updated_in_osm': updated_osm_count
         }
+        
+        # 如果有边界信息，也添加到映射结果中
+        if boundary_info:
+            mapping_result['boundary_info'] = boundary_info
         save_json_file(mapping_result, args.output_mapping_json)
 
     # --- 8. Generate Visualization (if requested) ---

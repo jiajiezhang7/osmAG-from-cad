@@ -28,11 +28,11 @@ polygon_processing:
     enabled: true     # 是否启用多边形简化
     # 这个值就是epsilon 另外，增大它会导致简化效果加剧
     tolerance: 1.3   # 简化参数 1.3正正好
-    
+
 # 坐标转换参数
 coordinate_conversion:
   padding_ratio: 0.03  # 边缘空隙比例，默认为3%，用于dxf2svg、extract_room_polygons等
-
+  
   # 毛刺去除
   # 参数调整指南:
   # 1. 角度阈值(angleThreshold)
