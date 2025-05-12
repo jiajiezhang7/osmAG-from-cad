@@ -7,6 +7,9 @@ import os
 import glob
 import numpy as np
 import json
+import yaml
+import argparse
+from pathlib import Path
 
 def get_entity_bounds(entity):
     """获取单个实体的边界点"""
@@ -52,7 +55,18 @@ def get_entity_bounds(entity):
     
     return points
 
-def get_bounds(points):
+def load_yaml_config(config_path):
+    """加载YAML配置文件"""
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f)
+        print(f"已加载配置文件: {config_path}")
+        return config
+    except Exception as e:
+        print(f"警告: 无法加载配置文件 {config_path}: {e}")
+        return None
+
+def get_bounds(points, padding_ratio=0.03):
     """从点集计算边界，添加边距"""
     if not points:
         return None
@@ -61,7 +75,7 @@ def get_bounds(points):
     min_x, max_x = min(xs), max(xs)
     min_y, max_y = min(ys), max(ys)
     
-    # 添加边距 (从 1% 增加到 3%)
+    # 添加边距
     width = max_x - min_x
     height = max_y - min_y
     # 如果宽度或高度为0，给一个最小边距，避免padding为0
@@ -69,12 +83,12 @@ def get_bounds(points):
     if base_dimension == 0: 
         padding = 1.0 # 或者其他合适的默认小边距值
     else:
-        padding = base_dimension * 0.03 # 从 0.01 增加到 0.03
+        padding = base_dimension * padding_ratio
     
     return (min_x - padding, min_y - padding, 
             max_x + padding, max_y + padding)
 
-def get_modelspace_bounds(msp, lower_percentile=0.5, upper_percentile=99.5):
+def get_modelspace_bounds(msp, lower_percentile=0.5, upper_percentile=99.5, padding_ratio=0.03):
     """获取所有实体的整体边界 (使用百分位数过滤离群点)"""
     all_points = []
     for entity in msp:
@@ -124,7 +138,7 @@ def get_modelspace_bounds(msp, lower_percentile=0.5, upper_percentile=99.5):
         final_points = filtered_points
 
     # 4. 使用过滤后的点计算最终边界
-    final_bounds = get_bounds(final_points)
+    final_bounds = get_bounds(final_points, padding_ratio)
     
     # print(f"Percentile bounds: x=[{min_x_bound}, {max_x_bound}], y=[{min_y_bound}, {max_y_bound}]")
     # print(f"Final bounds: {final_bounds}")
@@ -143,12 +157,22 @@ def normalize_coordinates(bounds, target_size=4000):  # 增加默认分辨率
         scale = target_size / height
     return scale, min_x, min_y
 
-def dxf_to_svg(input_path, output_path, target_size=4000):  # 增加默认分辨率
+def dxf_to_svg(input_path, output_path, target_size=4000, config=None):  # 增加默认分辨率
+    # 设置默认边缘空隙比例
+    padding_ratio = 0.03  # 默认为3%
+    
+    # 如果提供了配置，从配置中读取边缘空隙比例
+    if config and 'coordinate_conversion' in config and 'padding_ratio' in config['coordinate_conversion']:
+        padding_ratio = config['coordinate_conversion'].get('padding_ratio', padding_ratio)
+        print(f"从配置文件中读取边缘空隙比例: {padding_ratio:.2%}")
+    else:
+        print(f"使用默认边缘空隙比例: {padding_ratio:.2%}")
+        
     try:
         doc = ezdxf.readfile(input_path)
         msp = doc.modelspace()
         
-        bounds = get_modelspace_bounds(msp)
+        bounds = get_modelspace_bounds(msp, padding_ratio=padding_ratio)
         if not bounds:
             return False, "无法获取图形边界，请检查DXF文件是否包含有效实体"
         
@@ -249,9 +273,23 @@ def dxf_to_svg(input_path, output_path, target_size=4000):  # 增加默认分辨
 
 
 if __name__ == "__main__":
-    # --- 用户可修改路径 ---
-    input_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/SEM/dxf/auto_filter"
-    output_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/SEM/img/svg_manual_filter/"
+    parser = argparse.ArgumentParser(description='将DXF文件转换为SVG格式')
+    parser.add_argument('--input-dir', type=str, default='/home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/dxf/manual_filter',
+                        help='包含DXF文件的输入目录')
+    parser.add_argument('--output-dir', type=str, default='/home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/img/svg_manual_filter',
+                        help='保存SVG文件的输出目录')
+    parser.add_argument('--config', type=str, default='/home/jay/AGSeg_ws/AGSeg/cad2osm/config/params.yaml',
+                        help='配置文件路径')
+    args = parser.parse_args()
+    
+    # 加载配置文件
+    config = None
+    if os.path.exists(args.config):
+        config = load_yaml_config(args.config)
+    
+    # --- 使用命令行参数或默认值 ---
+    input_dir = args.input_dir
+    output_dir = args.output_dir
     # --------------------
 
     # 确保输出目录存在
@@ -273,7 +311,7 @@ if __name__ == "__main__":
             svg_file = os.path.join(output_dir, svg_filename)
 
             print(f"--- 正在处理: {filename} ---")
-            success, message = dxf_to_svg(input_file, svg_file)
+            success, message = dxf_to_svg(input_file, svg_file, config=config)
             if success:
                 print(f"  -> 转换成功: {svg_file}")
                 success_count += 1
