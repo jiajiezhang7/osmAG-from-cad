@@ -250,8 +250,8 @@ def dxf_to_svg(input_path, output_path, target_size=4000):  # 增加默认分辨
 
 if __name__ == "__main__":
     # --- 用户可修改路径 ---
-    input_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/data_dxf/ShanghaiTech/teaching_center/filtered_trial/"
-    output_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/data_img/ShanghaiTech/teaching_center/svg_filtered_trial/"
+    input_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/SEM/dxf/auto_filter"
+    output_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/SEM/img/svg_manual_filter/"
     # --------------------
 
     # 确保输出目录存在

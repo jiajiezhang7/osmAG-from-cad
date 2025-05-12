@@ -1,5 +1,6 @@
 # Last edited by Jiajie Zhang 2024.12.06
 # 该脚本用于将全图层dxf过滤为保留固定图层的dxf，在机理上已经成功了，但由于CAD文件图层的命名不规则性，用 hard-coded的方式是无法实现的
+# 25.5.06 在过滤前实现：把所有 INSERT 展平到 modelspace，保证输出的 DXF 里真正只有几何实体，不再依赖 BLOCK 定义
 import ezdxf
 import os
 from datetime import datetime
@@ -155,6 +156,14 @@ def filter_dxf_layers(input_file, output_file):
             
         # 获取模型空间
         msp = doc.modelspace()
+        # --- 新增：展开所有块引用到 modelspace ---
+        for insert in list(msp.query('INSERT')):
+            try:
+                for sub in insert.virtual_entities():
+                    msp.add_entity(sub)
+            except Exception as e:
+                print(f"警告: 无法展开块引用 {insert.dxf.name}: {e}")
+        # --- 结束新增 ---
         new_msp = new_doc.modelspace()
         
         # 获取要保留的图层 (使用原始名称)
@@ -245,9 +254,9 @@ def main():
     主函数 - 批量处理DXF文件
     """
     # --- 定义输入输出目录 --- 
-    input_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/data_dxf/ShanghaiTech/teaching_center/original/"
-    output_dxf_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/data_dxf/ShanghaiTech/teaching_center/filtered_trial/"
-    output_layer_info_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/data_info/ShanghaiTech/teaching_center/layer-info-filtered-trial/"
+    input_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/SEM/dxf"
+    output_dxf_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/SEM/dxf/auto_filter"
+    output_layer_info_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/SEM/layer_info/auto_filter"
     # -------------------------
     
     # 确保输出目录存在
