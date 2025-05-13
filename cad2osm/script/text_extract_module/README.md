@@ -2,6 +2,27 @@
 
 这个模块用于处理CAD文件到OSM格式的转换过程中的文本提取和匹配问题，特别是将DXF文本坐标与AreaGraph处理后的房间坐标进行匹配，并将文本标签添加到OSM文件中。
 
+## 快速入门：使用统一脚本
+
+为了简化工作流程，推荐使用统一入口脚本`text_extractor.py`进行文本提取和匹配。
+
+### 必要的输入文件
+
+使用`text_extractor.py`前，需要准备以下文件：
+
+1. **DXF源文件**：包含文本信息的CAD原始文件
+2. **边界信息文件**：由`dxf2svg.py`生成的`.bounds.json`文件，包含坐标转换所需的边界信息
+3. **OSM文件**：由AreaGraph处理后生成的`osmAG.osm`文件，包含房间多边形信息
+4. **配置文件**：可选的`params.yaml`配置文件，包含坐标转换参数
+
+### 输出文件
+
+脚本会生成以下输出：
+
+1. **更新后的OSM文件**：添加了房间名称的OSM文件
+2. **可视化图像**：可选的房间和文本匹配可视化图像
+3. **中间JSON文件**：在分步执行模式下，会生成各步骤的中间结果JSON文件
+
 ## 统一入口脚本
 
 ### 统一入口脚本 (`text_extractor.py`)
@@ -127,19 +148,51 @@ python match_text_to_rooms.py --text-json <pixel_text.json> --rooms-json <rooms.
 ### 使用统一入口脚本的工作流程
 
 1. 使用`dxf2svg.py`将DXF转换为SVG（同时生成.bounds.json文件）
-2. 使用`svg2png.py`将SVG转换为PNG
-3. 使用AreaGraph处理PNG生成osmAG.osm
-4. 使用`text_extractor.py`一站式处理文本提取、坐标转换、房间提取、文本匹配和OSM更新
+   ```bash
+   python /path/to/dxf2svg.py --input <dxf_file> --output <svg_file>
+   ```
+   - 这一步会在SVG文件同目录下生成必要的`.bounds.json`文件
 
-```bash
-python text_extractor.py --mode full \
-    --dxf <dxf_file> \
-    --bounds <bounds_json> \
-    --osm <osmAG.osm> \
-    --output <output_osm> \
-    --config <params.yaml> \
-    --visualize
-```
+2. 使用`svg2png.py`将SVG转换为PNG
+   ```bash
+   python /path/to/svg2png.py --input <svg_file> --output <png_file>
+   ```
+
+3. 使用AreaGraph处理PNG生成osmAG.osm
+   - 这一步需要使用AreaGraph工具处理PNG图像
+   - 生成的osmAG.osm文件包含房间多边形信息
+
+4. 使用`text_extractor.py`一站式处理文本提取、坐标转换、房间提取、文本匹配和OSM更新
+   ```bash
+   python text_extractor.py --mode full \
+       --dxf <dxf_file> \
+       --bounds <bounds_json> \
+       --osm <osmAG.osm> \
+       --output <output_osm> \
+       --config <params.yaml> \
+       --visualize
+   ```
+
+### 文件准备清单
+
+在运行统一脚本前，请确保以下文件已准备就绪：
+
+| 文件类型 | 来源 | 说明 |
+|---------|------|------|
+| DXF文件 | 原始CAD文件 | 包含文本信息的CAD原始文件 |
+| .bounds.json | dxf2svg.py生成 | 包含坐标转换所需的边界信息 |
+| osmAG.osm | AreaGraph处理结果 | 包含房间多边形信息 |
+| params.yaml | 配置文件 | 可选，包含坐标转换参数 |
+
+### 统一脚本输出文件
+
+执行完成后，脚本会生成以下文件：
+
+| 文件类型 | 说明 |
+|---------|------|
+| 更新后的OSM文件 | 添加了房间名称的OSM文件 |
+| 可视化图像 | 可选，房间和文本匹配的可视化图像 |
+| 中间JSON文件 | 分步执行模式下的各步骤结果文件 |
 
 ### 使用独立工具的工作流程
 
@@ -186,7 +239,56 @@ pixel_y = svg_height - (dxf_y - min_y_padded) * scale
 
 ## 使用示例
 
-### 使用原始 add_text_to_osm.py 的示例
+### 使用统一脚本 text_extractor.py 的示例
+
+```bash
+# 完整流程模式示例
+python text_extractor.py --mode full \
+--dxf /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/SIST-F1.dxf \
+--bounds /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/img/svg_manual_filter/SIST-F1-filtered_new.bounds.json \
+--osm /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/ag_osm/SIST-F1_clear_edited260_merged_filtered_osmAG.osm \
+--output /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/ag_osm/SIST-F1_texted.osm \
+--config /home/jay/AGSeg_ws/AGSeg/cad2osm/config/params.yaml \
+--visualize \
+--visualization-output /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/visualization/SIST-F1_text_matching.png
+```
+
+### 分步执行示例
+
+```bash
+# 1. 提取文本
+python text_extractor.py --mode extract_text \
+--dxf /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/SIST-F1.dxf \
+--output /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/extract_text/SIST-F1.json \
+--layer "I—平面—文字"
+
+# 2. 转换坐标
+python text_extractor.py --mode convert_coordinates \
+--text /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/extract_text/SIST-F1.json \
+--bounds /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/img/svg_manual_filter/SIST-F1-filtered_new.bounds.json \
+--output /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/extract_text/SIST-F1_pixel.json
+
+# 3. 提取房间多边形
+python text_extractor.py --mode extract_rooms \
+--osm /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/ag_osm/SIST-F1_clear_edited260_merged_filtered_osmAG.osm \
+--output /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/extract_text/SIST-F1_rooms.json \
+--config /home/jay/AGSeg_ws/AGSeg/cad2osm/config/params.yaml
+
+# 4. 匹配文本到房间
+python text_extractor.py --mode match_text \
+--text /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/extract_text/SIST-F1_pixel.json \
+--rooms /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/extract_text/SIST-F1_rooms.json \
+--output /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/extract_text/SIST-F1_mapping.json
+
+# 5. 更新OSM文件
+python text_extractor.py --mode update_osm \
+--osm /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/ag_osm/SIST-F1_clear_edited260_merged_filtered_osmAG.osm \
+--mapping /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/extract_text/SIST-F1_mapping.json \
+--output /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/ag_osm/SIST-F1_texted.osm \
+--visualize
+```
+
+### 使用原始 add_text_to_osm.py 的示例（不推荐）
 
 ```bash
 python /home/jay/AGSeg_ws/AGSeg/cad2osm/script/text_extract_module/add_text_to_osm.py \
