@@ -26,7 +26,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from text_extract_module.dxf_text_to_pixel import load_json_file, save_json_file, dxf_to_pixel_coordinates, convert_text_coordinates
 from text_extract_module.extract_room_polygons import load_osm_file, load_yaml_config, latlon_to_pixel, extract_room_polygons
-from text_extract_module.match_text_to_rooms import point_in_polygon, distance_to_polygon, match_text_to_rooms
+from text_extract_module.match_text_to_rooms import point_in_polygon, distance_to_polygon, match_text_to_rooms, calculate_center_point
 
 # TODO 整合后的输入和输出
     # 整合后的输入：
@@ -92,43 +92,242 @@ def visualize_matching(rooms_data, text_data, mapping_result, output_path):
         ax.set_xlim(min(all_x) - margin, max(all_x) + margin)
         ax.set_ylim(min(all_y) - margin, max(all_y) + margin)
 
-    # 为每个房间ID分配一个较深的颜色
+    # 为每个房间ID分配一个随机颜色（更深的颜色）
     room_colors = {}
     for room in rooms_data:
         room_id = room['id']
-        # 使用更深的颜色，限制颜色亮度范围
-        base_color = np.random.rand(3,) * 0.8  # 通过乘以0.7使颜色更深
-        room_colors[room_id] = base_color
+        # 生成更深的颜色，减小RGB值的范围
+        room_colors[room_id] = np.random.uniform(0.1, 0.7, 3)  # 随机RGB颜色，范围更小使颜色更深
 
     # 绘制所有房间多边形
     for room in rooms_data:
         room_id = room['id']
         polygon = room['polygon']
 
-        # 创建matplotlib多边形对象，使用更深的颜色和更高的不透明度
+        # 创建matplotlib多边形对象
         poly = MplPolygon(polygon, closed=True, alpha=0.7,
-                         facecolor=room_colors.get(room_id, (0.3, 0.3, 0.3)))
+                         facecolor=room_colors.get(room_id, (0.3, 0.3, 0.3)),
+                         edgecolor='black', linewidth=0.5)  # 添加细边框线
         ax.add_patch(poly)
 
-        # 在多边形中心添加房间ID标签
+        # 计算并显示多边形中心点（使用最大内接圆中心）
         if polygon:  # 确保多边形有点
-            center_x = sum(p[0] for p in polygon) / len(polygon)
-            center_y = sum(p[1] for p in polygon) / len(polygon)
-            ax.text(center_x, center_y, f"ID:{room_id}", ha='center', va='center',
-                   fontsize=8, color='white', fontweight='bold')
+            # 计算简单平均值作为ID标签位置
+            # avg_center_x = sum(p[0] for p in polygon) / len(polygon)
+            # avg_center_y = sum(p[1] for p in polygon) / len(polygon)
+            
+            # 计算最大内接圆中心
+            center_point = calculate_center_point(polygon)
+            center_x, center_y = center_point
+            
+            # 绘制中心点
+            ax.plot(center_x, center_y, 'bx', markersize=4)  # 蓝色x表示中心点
+            
+            # # 在多边形中心添加房间ID标签（使用平均值位置）
+            # ax.text(avg_center_x, avg_center_y, f"ID:{room_id}", ha='center', va='center',
+            #        fontsize=6, color='black', fontweight='bold')  # 减小字体大小
 
-    # 绘制所有文本标签
+    # 处理一对多的文本匹配情况，将多个文本整合成一个完整的字符串
+    # 首先按房间ID对文本进行分组和合并
+    merged_matches = {}
+    
+    for room_id, texts in mapping_result['matches'].items():
+        # 按匹配类型分组
+        inside_matches = [m for m in texts if m['match_type'] == 'inside']
+        nearby_matches = [m for m in texts if m['match_type'] == 'nearby']
+        
+        # 选择优先级更高的匹配组
+        selected_matches = inside_matches if inside_matches else nearby_matches
+        
+        if not selected_matches:
+            continue
+            
+        # 检查是否有已经合并的文本
+        has_merged = False
+        for match in selected_matches:
+            if 'merged' in match and match['merged']:
+                # 如果有已经合并的文本，直接使用它
+                merged_matches[room_id] = match
+                has_merged = True
+                break
+        
+        if not has_merged:
+            # 如果没有已经合并的文本，手动合并
+            all_texts = [m['text'] for m in selected_matches]
+            
+            # 过滤掉子字符串
+            unique_texts = []
+            for text in all_texts:
+                is_substring = False
+                for other_text in all_texts:
+                    if text != other_text and text in other_text:
+                        is_substring = True
+                        break
+                if not is_substring:
+                    unique_texts.append(text)
+            
+            if not unique_texts:
+                unique_texts = all_texts
+                
+            merged_text = " ".join(unique_texts)
+            
+            # 创建合并后的匹配信息
+            merged_match = selected_matches[0].copy()
+            merged_match['text'] = merged_text
+            merged_match['original_texts'] = all_texts
+            merged_match['merged'] = len(all_texts) > 1
+            
+            merged_matches[room_id] = merged_match
+    
+    # 创建一个集合，存储所有已合并文本的原始文本ID
+    merged_text_ids = set()
+    for match in merged_matches.values():
+        if 'merged' in match and match['merged']:
+            # 收集原始文本的ID
+            for original_match in match.get('original_matches', []):
+                if 'id' in original_match:
+                    merged_text_ids.add(original_match['id'])
+    
+    # 创建一个集合，用于跟踪已经处理过的文本，避免重复显示
+    processed_texts = set()
+    
+    # 存储已绘制文本的边界框，用于检测重叠
+    text_boxes = []
+
+
+
+    
+    # 绘制所有文本和匹配关系
+    # 首先绘制所有匹配的文本
+    for room_id, match in merged_matches.items():
+        text_point = match['pixel_point']
+        match_type = match['match_type']
+        text = match['text']
+        
+        # 将这个文本标记为已处理
+        processed_texts.add(text)
+        
+        # 找到对应的房间多边形中心
+        room_polygon = None
+        for room in rooms_data:
+            if room['id'] == room_id:
+                room_polygon = room['polygon']
+                break
+        
+        if room_polygon:
+            # 使用最大内接圆中心
+            center_point = calculate_center_point(room_polygon)
+            center_x, center_y = center_point
+            
+            # 绘制从文本到房间中心的连线
+            line_style = '-' if match_type == 'inside' else '--'  # 实线表示inside，虚线表示nearby
+            line_color = 'green' if match_type == 'inside' else 'blue'
+            ax.plot([text_point[0], center_x], [text_point[1], center_y],
+                   line_style, color=line_color, linewidth=0.5, alpha=0.7)
+            
+            # 绘制文本
+            fontsize = 6  # 减小字体大小
+            
+            # 计算文本边界框
+            text_width = len(text) * fontsize * 0.6
+            text_height = fontsize * 1.2
+            
+            # 文本位置
+            text_x, text_y = text_point[0], text_point[1] + 5
+            
+            # 检查是否与现有文本重叠
+            box = [text_x - text_width/2, text_y - text_height, text_x + text_width/2, text_y + text_height]
+            overlap = True
+            offset = 0
+            
+            # 尝试不同位置直到找到无重叠位置
+            while overlap and offset < 40:  # 限制尝试次数
+                overlap = False
+                for existing_box in text_boxes:
+                    # 检查是否重叠
+                    if (box[0] < existing_box[2] and box[2] > existing_box[0] and
+                        box[1] < existing_box[3] and box[3] > existing_box[1]):
+                        overlap = True
+                        break
+                
+                if overlap:
+                    # 尝试向下移动
+                    offset += 5
+                    text_y = text_point[1] + 5 + offset
+                    box = [text_x - text_width/2, text_y - text_height, text_x + text_width/2, text_y + text_height]
+            
+            # 如果是合并的文本，使用紫色和星号标记
+            if 'merged' in match and match['merged']:
+                # 添加合并后的文本
+                ax.text(text_x, text_y, text, ha='center', va='bottom', fontsize=fontsize, color='purple', fontweight='bold')
+                # 添加一个特殊标记表示这是合并后的文本
+                ax.plot(text_point[0], text_point[1], '*', color='purple', markersize=8, alpha=0.7)  # 紫色星号表示合并文本
+                
+                # 如果是合并文本，将所有原始文本也标记为已处理，避免重复显示
+                if 'original_texts' in match:
+                    for original_text in match['original_texts']:
+                        processed_texts.add(original_text)
+            else:
+                # 添加普通文本
+                ax.plot(text_point[0], text_point[1], 'ro', markersize=3)  # 红色点表示文本位置
+                ax.text(text_x, text_y, text, ha='center', va='bottom', fontsize=fontsize, color='red')
+            
+            # 记录文本边界框
+            text_boxes.append(box)
+    
+    # 然后绘制未匹配的文本（那些不在processed_texts中的文本）
     for text_item in text_data:
-        x, y = text_item['pixel_point']
         text = text_item['text']
-        ax.plot(x, y, 'ro', markersize=4)  # 红色点表示文本位置
-        ax.text(x, y+10, text, ha='center', va='bottom', fontsize=8, color='red')
+        
+        # 如果这个文本已经处理过了，就跳过
+        if text in processed_texts:
+            continue
+            
+        # 绘制未匹配的文本
+        x, y = text_item['pixel_point']
+        ax.plot(x, y, 'ro', markersize=3)  # 红色点表示文本位置
+        
+        # 计算文本边界框的初始位置
+        fontsize = 6  # 减小字体大小
+        text_width = len(text) * fontsize * 0.6
+        text_height = fontsize * 1.2
+        
+        # 初始文本位置
+        text_x, text_y = x, y + 5
+        
+        # 检查是否与现有文本重叠
+        box = [text_x - text_width/2, text_y - text_height, text_x + text_width/2, text_y + text_height]
+        overlap = True
+        offset = 0
+        
+        # 尝试不同位置直到找到无重叠位置
+        while overlap and offset < 40:  # 限制尝试次数
+            overlap = False
+            for existing_box in text_boxes:
+                # 检查是否重叠
+                if (box[0] < existing_box[2] and box[2] > existing_box[0] and
+                    box[1] < existing_box[3] and box[3] > existing_box[1]):
+                    overlap = True
+                    break
+            
+            if overlap:
+                # 尝试向下移动
+                offset += 5
+                text_y = y + 5 + offset
+                box = [text_x - text_width/2, text_y - text_height, text_x + text_width/2, text_y + text_height]
+        
+        # 添加文本并记录其边界框
+        ax.text(text_x, text_y, text, ha='center', va='bottom', fontsize=fontsize, color='red')
+        text_boxes.append(box)
 
-    # 删除匹配连线的绘制代码
-    # 只添加文本位置的图例
+    # 添加图例
     from matplotlib.lines import Line2D
     legend_elements = [
-        Line2D([0], [0], marker='o', color='w', markerfacecolor='r', markersize=8, label='Text Position'),
+        Line2D([0], [0], color='green', linestyle='-', lw=2, label='Inside Match'),
+        Line2D([0], [0], color='blue', linestyle='--', lw=2, label='Nearby Match'),
+        Line2D([0], [0], marker='o', color='w', markerfacecolor='r', markersize=6, label='Text Position'),
+        Line2D([0], [0], marker='x', color='blue', markersize=6, label='Room Center'),
+        Line2D([0], [0], marker='*', color='purple', markersize=8, label='Merged Text'),
     ]
     ax.legend(handles=legend_elements, loc='upper right')
 
@@ -175,18 +374,58 @@ def update_osm_tree(osm_tree, matches):
 
         # 检查这个房间是否有匹配的文本
         if way_id in matches and matches[way_id]:
-            # 优先使用'inside'匹配，其次是'nearby'
-            # 获取匹配到的第一个合适的文本（如果有多个匹配，简单地使用第一个）
-
-            target_text = None
+            # 使用评分机制选择最佳匹配
+            # 根据匹配质量评分排序所有匹配，选择评分最高的
+            
+            # 处理一对多的文本匹配情况，将多个文本整合成一个完整的字符串
+            # 首先按匹配类型和评分分组
             inside_matches = [m for m in matches[way_id] if m['match_type'] == 'inside']
             nearby_matches = [m for m in matches[way_id] if m['match_type'] == 'nearby']
-
-            if inside_matches:
-                target_text = inside_matches[0]['text'] # 取第一个内部匹配
-            elif nearby_matches:
-                # 可以根据距离排序，这里简单取第一个附近匹配
-                target_text = nearby_matches[0]['text']
+            
+            # 如果有评分信息，按评分排序
+            if inside_matches and 'score' in inside_matches[0]:
+                inside_matches = sorted(inside_matches, key=lambda m: m.get('score', 0), reverse=True)
+            if nearby_matches and 'score' in nearby_matches[0]:
+                nearby_matches = sorted(nearby_matches, key=lambda m: m.get('score', 0), reverse=True)
+            
+            # 先使用inside匹配，如果没有再使用nearby匹配
+            all_matches = inside_matches if inside_matches else nearby_matches
+            
+            # 如果没有匹配，跳过
+            if not all_matches:
+                print(f"Warning: Room {way_id} has matches but no suitable text found.")
+                continue
+                
+            # 将所有匹配的文本合并成一个字符串
+            # 先收集所有文本
+            all_texts = [m['text'] for m in all_matches]
+            
+            # 为了避免重复，我们可能需要进行一些处理
+            # 例如，如果一个文本是另一个文本的子字符串，我们可能只需要保留较长的那个
+            unique_texts = []
+            for text in all_texts:
+                # 检查这个文本是否是其他文本的子字符串
+                is_substring = False
+                for other_text in all_texts:
+                    if text != other_text and text in other_text:
+                        is_substring = True
+                        break
+                if not is_substring:
+                    unique_texts.append(text)
+            
+            # 如果过滤后没有文本，使用原始列表
+            if not unique_texts:
+                unique_texts = all_texts
+            
+            # 将所有文本按空格连接成一个字符串
+            target_text = " ".join(unique_texts)
+            
+            # 保存匹配信息供可视化使用
+            match_info = all_matches[0].copy()
+            match_info['text'] = target_text
+            match_info['original_texts'] = all_texts
+            match_info['merged'] = len(all_texts) > 1
+            match_type = match_info['match_type']
 
             if target_text:
                 # 查找或创建name标签
@@ -342,19 +581,41 @@ def main():
 
     # --- 5. Match Text Labels to Rooms ---
     print("\nMatching text labels to rooms...")
-    # Note: match_text_to_rooms currently doesn't use the threshold, update if needed
-    # Adjusting the call signature if the function was updated:
-    # mapping_result = match_text_to_rooms(text_data_pixel, rooms_data_pixel, args.nearby_threshold)
-    mapping_result = match_text_to_rooms(text_data_pixel, rooms_data_pixel) # Using filtered data now
+    # 使用改进的匹配函数，传递附近匹配阈值和中心距离比例阈值
+    mapping_result = match_text_to_rooms(
+        text_data_pixel, 
+        rooms_data_pixel, 
+        nearby_threshold=args.nearby_threshold,
+        max_center_distance_ratio=0.7  # 这个参数控制内部匹配的质量评估
+    )
 
-    matched_count = sum(len(texts) for texts in mapping_result['matches'].values())
-    unmatched_count = len(mapping_result['unmatched'])
-    total_texts = len(text_data_pixel)
+    # 从匹配结果中获取统计信息
+    if 'match_statistics' in mapping_result:
+        stats = mapping_result['match_statistics']
+        matched_count = stats['matched_texts']
+        unmatched_count = stats['unmatched_texts']
+        total_texts = stats['total_texts']
+    else:
+        # 兼容旧版本的返回结果格式
+        matched_count = sum(len(texts) for texts in mapping_result['matches'].values())
+        unmatched_count = len(mapping_result['unmatched'])
+        total_texts = len(text_data_pixel)
+    
     match_rate = (matched_count / total_texts * 100) if total_texts > 0 else 0
     print(f"Matching complete:")
     print(f"  - Matched texts: {matched_count}/{total_texts} ({match_rate:.2f}%)")
     print(f"  - Unmatched texts: {unmatched_count}")
     print(f"  - Rooms with matches: {len(mapping_result['matches'])}")
+    
+    # 打印高评分匹配的信息
+    high_quality_matches = 0
+    for room_id, matches in mapping_result['matches'].items():
+        for match in matches:
+            if 'score' in match and match['score'] >= 70:
+                high_quality_matches += 1
+    
+    if high_quality_matches > 0:
+        print(f"  - High quality matches (score >= 70): {high_quality_matches}")
 
     # --- 6. Update OSM File (in memory) ---
     print("\nUpdating OSM tree in memory with matched room names...")

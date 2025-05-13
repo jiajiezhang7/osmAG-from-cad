@@ -19,7 +19,7 @@ python dxf_text_to_pixel.py --input-json <extracted_text.json> --bounds-json <fi
 
 ### 2. 提取房间多边形 (`extract_room_polygons.py`)
 
-从AreaGraph生成的osmAG.osm文件中提取房间多边形信息，并将经纬度坐标转换为像素坐标。脚本会自动尝试加载`area_graph_segment/config/params.yaml`配置文件。
+从AreaGraph生成的osmAG.osm文件中提取房间多边形信息，并将经纬度坐标转换为像素坐标。脚本会自动尝试加载`cad2osm/config/params.yaml`配置文件。
 
 ```bash
 python extract_room_polygons.py --input-osm <osmAG.osm> --output-json <rooms.json> [--config <custom_params.yaml>]
@@ -82,7 +82,7 @@ pixel_y = svg_height - (dxf_y - min_y_padded) * scale
 2. 匹配阈值（50像素）可能需要根据实际情况调整
 3. `extract_room_polygons.py`脚本现在已经实现了经纬度到像素坐标的转换功能
 4. 经纬度到像素坐标的转换实现了与`WGS84toCartesian.h`相同的投影计算方法
-5. 脚本会自动尝试加载`area_graph_segment/config/params.yaml`配置文件
+5. 脚本会自动尝试加载`cad2osm/config/params.yaml`配置文件
 6. 如果找不到默认配置文件，脚本将使用硬编码的默认参数：root_lat=31.17947960435，root_lon=121.59139728509，root_pixel_x=3804.0，root_pixel_y=2801.0，resolution=0.044
 
 
