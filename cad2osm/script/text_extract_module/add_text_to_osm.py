@@ -333,7 +333,10 @@ def visualize_matching(rooms_data, text_data, mapping_result, output_path):
     ax.set_title('Room Polygons and Text Matching Visualization')
     ax.set_xlabel('Pixel X')
     ax.set_ylabel('Pixel Y')
-
+    
+    # 设置等比例坐标，确保横纵比例一致
+    ax.set_aspect('equal')
+    
     # 保存图像
     plt.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches='tight')

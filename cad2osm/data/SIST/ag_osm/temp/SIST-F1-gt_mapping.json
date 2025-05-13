@@ -1499,5 +1499,12 @@
         "total_texts": 139,
         "matched_texts": 92,
         "unmatched_texts": 47
+    },
+    "statistics": {
+        "total_texts": 139,
+        "matched_texts": 92,
+        "unmatched_texts": 47,
+        "match_rate": "66.19%",
+        "rooms_with_matches": 52
     }
 }
