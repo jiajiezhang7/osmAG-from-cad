@@ -2987,7 +2987,7 @@
     <nd ref="-686" />
     <nd ref="-686" />
     <tag k="indoor" v="room" />
-    <tag k="name" v="电梯厅 门厅 客梯 E2-F1-01 客梯" />
+    <tag k="name" v="门厅 客梯 E2-F1-01 客梯" />
     <tag k="osmAG:areaType" v="room" />
     <tag k="osmAG:type" v="area" />
   </way>
@@ -3199,7 +3199,7 @@
     <nd ref="-744" />
     <nd ref="-744" />
     <tag k="indoor" v="room" />
-    <tag k="name" v="无障碍电梯 货梯 E1c-F1-10 电梯厅 空调机房 大厅 E1d-F1-01 电梯厅" />
+    <tag k="name" v="无障碍电梯 货梯 E1c-F1-10 空调机房 大厅 E1d-F1-01" />
     <tag k="osmAG:areaType" v="room" />
     <tag k="osmAG:type" v="area" />
   </way>
