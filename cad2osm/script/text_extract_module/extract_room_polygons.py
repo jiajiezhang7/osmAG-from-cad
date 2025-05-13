@@ -220,6 +220,7 @@ def extract_room_polygons(osm_root, config=None, padding_ratio=0.03):
         is_room = False
         room_name = None
         room_type = None
+        is_structure = False
 
         for tag in way.findall("./tag"):
             k = tag.get('k')
@@ -231,8 +232,11 @@ def extract_room_polygons(osm_root, config=None, padding_ratio=0.03):
                 room_name = v
             elif k == 'room':
                 room_type = v
+            elif k == 'osmAG:areaType' and v == 'structure':
+                is_structure = True
 
-        if not is_room:
+        # 跳过不是房间的way或者是structure类型的way
+        if not is_room or is_structure:
             continue
 
         # 收集房间的节点引用

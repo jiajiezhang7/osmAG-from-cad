@@ -93,80 +93,259 @@ def distance_to_polygon(point, polygon):
     return point_obj.distance(polygon_obj)
 
 
-def match_text_to_rooms(text_data, rooms_data):
+def calculate_polygon_area(polygon):
     """
-    将文本标签匹配到房间
+    计算多边形面积
+
+    参数:
+        polygon: [[x1, y1], [x2, y2], ...] 格式的多边形顶点列表
+
+    返回:
+        多边形面积
+    """
+    polygon_obj = Polygon(polygon)
+    return polygon_obj.area
+
+
+def calculate_largest_inscribed_circle(polygon):
+    """
+    计算多边形的最大内接圆
+
+    参数:
+        polygon: [[x1, y1], [x2, y2], ...] 格式的多边形顶点列表
+
+    返回:
+        (center_x, center_y, radius) 内接圆的中心点和半径
+    """
+    from shapely.geometry import Polygon
+    from scipy.spatial import distance
+    import numpy as np
+    
+    # 创建Shapely多边形对象
+    polygon_obj = Polygon(polygon)
+    
+    # 如果多边形无效或太小，返回质心
+    if not polygon_obj.is_valid or polygon_obj.area < 1:
+        centroid = polygon_obj.centroid
+        return centroid.x, centroid.y, 0
+    
+    # 生成多边形内部的网格点
+    bounds = polygon_obj.bounds
+    width = bounds[2] - bounds[0]
+    height = bounds[3] - bounds[1]
+    
+    # 计算适当的网格分辨率
+    # 对于大多边形使用更精细的网格，对于小多边形使用更粗糙的网格
+    grid_size = min(max(width, height) / 20, 10)  # 限制网格大小以提高效率
+    
+    x = np.arange(bounds[0], bounds[2], grid_size)
+    y = np.arange(bounds[1], bounds[3], grid_size)
+    xx, yy = np.meshgrid(x, y)
+    points = np.vstack([xx.ravel(), yy.ravel()]).T
+    
+    # 过滤出多边形内部的点
+    mask = np.array([polygon_obj.contains(Point(p[0], p[1])) for p in points])
+    interior_points = points[mask]
+    
+    # 如果没有内部点，返回质心
+    if len(interior_points) == 0:
+        centroid = polygon_obj.centroid
+        return centroid.x, centroid.y, 0
+    
+    # 对每个内部点，计算到多边形边界的最小距离
+    boundary = np.array(polygon_obj.exterior.coords)
+    min_distances = []
+    
+    for point in interior_points:
+        # 计算点到多边形边界的最小距离
+        dist = polygon_obj.boundary.distance(Point(point))
+        min_distances.append(dist)
+    
+    # 找到最大距离对应的点（内接圆中心）
+    max_index = np.argmax(min_distances)
+    center = interior_points[max_index]
+    radius = min_distances[max_index]
+    
+    return center[0], center[1], radius
+
+def calculate_center_point(polygon):
+    """
+    计算多边形中心点，使用最大内接圆的中心
+
+    参数:
+        polygon: [[x1, y1], [x2, y2], ...] 格式的多边形顶点列表
+
+    返回:
+        [x, y] 格式的中心点坐标
+    """
+    try:
+        # 尝试计算最大内接圆的中心
+        center_x, center_y, radius = calculate_largest_inscribed_circle(polygon)
+        
+        # 如果内接圆计算成功（半径大于0），使用内接圆中心
+        if radius > 0:
+            return [center_x, center_y]
+    except Exception as e:
+        print(f"Warning: Failed to calculate largest inscribed circle: {e}")
+    
+    # 如果内接圆计算失败，回退到使用质心
+    polygon_obj = Polygon(polygon)
+    centroid = polygon_obj.centroid
+    return [centroid.x, centroid.y]
+
+
+def distance_between_points(point1, point2):
+    """
+    计算两点之间的欧氏距离
+
+    参数:
+        point1: [x1, y1] 格式的点坐标
+        point2: [x2, y2] 格式的点坐标
+
+    返回:
+        两点之间的距离
+    """
+    return math.sqrt((point1[0] - point2[0])**2 + (point1[1] - point2[1])**2)
+
+
+def match_text_to_rooms(text_data, rooms_data, nearby_threshold=50, max_center_distance_ratio=0.7):
+    """
+    将文本标签匹配到房间，使用改进的匹配质量评分机制
 
     参数:
         text_data: 包含像素坐标的文本数据列表
         rooms_data: 包含房间多边形的数据列表
+        nearby_threshold: 考虑附近匹配的最大距离阈值（像素）
+        max_center_distance_ratio: 内部匹配时，文本到中心距离与房间特征尺寸的比例阈值
 
     返回:
         包含匹配关系的字典
     """
     matches = {}
     unmatched_texts = []
+    
+    # 预计算房间的面积和中心点
+    room_properties = {}
+    for room in rooms_data:
+        room_id = room['id']
+        polygon = room['polygon']
+        area = calculate_polygon_area(polygon)
+        center = calculate_center_point(polygon)
+        # 计算房间的特征尺寸（近似为半径）
+        characteristic_size = math.sqrt(area / math.pi)
+        
+        room_properties[room_id] = {
+            'area': area,
+            'center': center,
+            'characteristic_size': characteristic_size
+        }
 
     # 遍历所有文本标签
     for text_item in text_data:
         text = text_item['text']
         pixel_point = text_item['pixel_point']
-
-        # 初始化最佳匹配
-        best_match = None
-        best_distance = float('inf')
-        is_inside = False
+        
+        # 存储所有可能的匹配及其评分
+        candidates = []
 
         # 遍历所有房间
         for room in rooms_data:
             room_id = room['id']
             polygon = room['polygon']
-
+            room_props = room_properties[room_id]
+            
+            # 计算文本到房间中心的距离
+            center_distance = distance_between_points(pixel_point, room_props['center'])
+            
             # 检查点是否在多边形内
             if point_in_polygon(pixel_point, polygon):
-                is_inside = True
-                best_match = room_id
-                break
-
-            # 如果不在多边形内，计算距离
-            distance = distance_to_polygon(pixel_point, polygon)
-            if distance < best_distance:
-                best_distance = distance
-                best_match = room_id
-
-        # 记录匹配结果
-        if is_inside:
-            # 点在多边形内，直接匹配
+                # 内部匹配，但需要评估质量
+                # 计算文本到中心的距离与房间特征尺寸的比例
+                distance_ratio = center_distance / room_props['characteristic_size']
+                
+                # 如果文本离中心太远（相对于房间大小），可能是错误匹配
+                if distance_ratio <= max_center_distance_ratio:
+                    # 高质量内部匹配
+                    score = 100 - (distance_ratio * 50)  # 分数范围：50-100
+                else:
+                    # 低质量内部匹配
+                    score = 50 - (distance_ratio - max_center_distance_ratio) * 25
+                
+                candidates.append({
+                    'room_id': room_id,
+                    'match_type': 'inside',
+                    'score': score,
+                    'center_distance': center_distance,
+                    'distance_ratio': distance_ratio,
+                    'area': room_props['area']
+                })
+            else:
+                # 计算点到多边形的距离
+                distance = distance_to_polygon(pixel_point, polygon)
+                
+                # 只考虑距离在阈值内的附近匹配
+                if distance < nearby_threshold:
+                    # 附近匹配的评分，考虑距离和房间大小
+                    # 小房间的附近匹配应该有更高的权重
+                    size_factor = 1.0 / (1.0 + math.log10(1 + room_props['area'] / 10000))
+                    distance_factor = 1.0 - (distance / nearby_threshold)
+                    score = 40 + (size_factor * 30) + (distance_factor * 20)  # 分数范围：约40-90
+                    
+                    candidates.append({
+                        'room_id': room_id,
+                        'match_type': 'nearby',
+                        'score': score,
+                        'distance': distance,
+                        'center_distance': center_distance,
+                        'area': room_props['area']
+                    })
+        
+        # 根据评分排序候选匹配
+        candidates.sort(key=lambda x: x['score'], reverse=True)
+        
+        # 选择最佳匹配
+        if candidates:
+            best_candidate = candidates[0]
+            best_match = best_candidate['room_id']
+            match_type = best_candidate['match_type']
+            
+            # 记录匹配结果
             if best_match not in matches:
                 matches[best_match] = []
-            matches[best_match].append({
+                
+            match_info = {
                 'text': text,
                 'pixel_point': pixel_point,
-                'match_type': 'inside'
-            })
-        elif best_distance < 50:  # 设置一个合理的阈值，例如50像素
-            # 点不在多边形内，但距离很近
-            if best_match not in matches:
-                matches[best_match] = []
-            matches[best_match].append({
-                'text': text,
-                'pixel_point': pixel_point,
-                'match_type': 'nearby',
-                'distance': best_distance
-            })
+                'match_type': match_type,
+                'score': best_candidate['score']
+            }
+            
+            # 添加匹配类型特定的信息
+            if match_type == 'inside':
+                match_info['center_distance'] = best_candidate['center_distance']
+                match_info['distance_ratio'] = best_candidate['distance_ratio']
+            else:  # nearby
+                match_info['distance'] = best_candidate['distance']
+                match_info['center_distance'] = best_candidate['center_distance']
+            
+            matches[best_match].append(match_info)
         else:
             # 未找到合适的匹配
             unmatched_texts.append({
                 'text': text,
                 'pixel_point': pixel_point,
-                'best_candidate': best_match,
-                'distance': best_distance
+                'reason': 'No candidates within threshold'
             })
 
     # 返回匹配结果和未匹配的文本
     return {
         'matches': matches,
-        'unmatched': unmatched_texts
+        'unmatched': unmatched_texts,
+        'match_statistics': {
+            'total_texts': len(text_data),
+            'matched_texts': sum(len(texts) for texts in matches.values()),
+            'unmatched_texts': len(unmatched_texts)
+        }
     }
 
 

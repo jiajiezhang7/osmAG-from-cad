@@ -66,7 +66,9 @@ def load_yaml_config(config_path):
         print(f"警告: 无法加载配置文件 {config_path}: {e}")
         return None
 
-def get_bounds(points, padding_ratio=0.03):
+def get_bounds(points, padding_ratio=None):
+    if padding_ratio is None:
+        padding_ratio = 0.03  # 默认值
     """从点集计算边界，添加边距"""
     if not points:
         return None
@@ -88,7 +90,9 @@ def get_bounds(points, padding_ratio=0.03):
     return (min_x - padding, min_y - padding, 
             max_x + padding, max_y + padding)
 
-def get_modelspace_bounds(msp, lower_percentile=0.5, upper_percentile=99.5, padding_ratio=0.03):
+def get_modelspace_bounds(msp, lower_percentile=0.5, upper_percentile=99.5, padding_ratio=None):
+    if padding_ratio is None:
+        padding_ratio = 0.03  # 默认值
     """获取所有实体的整体边界 (使用百分位数过滤离群点)"""
     all_points = []
     for entity in msp:
