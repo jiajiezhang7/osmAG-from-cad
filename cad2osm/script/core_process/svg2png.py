@@ -8,15 +8,44 @@ from PIL import Image
 import io
 import os
 import glob
+import json
 
 # 禁用PIL的最大图像尺寸限制
 Image.MAX_IMAGE_PIXELS = None
+
+def load_bounds_json(svg_path):
+    """
+    从与SVG文件关联的bounds.json加载边界信息
+    """
+    bounds_path = os.path.splitext(svg_path)[0] + '.bounds.json'
+    if os.path.exists(bounds_path):
+        try:
+            with open(bounds_path, 'r') as f:
+                bounds_data = json.load(f)
+            if 'svg_width_px' in bounds_data and 'svg_height_px' in bounds_data:
+                return bounds_data
+        except Exception as e:
+            print(f"警告: 无法加载bounds.json文件: {e}")
+    return None
 
 def svg_to_occupancy_grid(svg_path, output_size=(4000, 4000), line_thickness=2):
     """
     将线条式SVG地图转换为occupancy grid map
     保持原始线条的连续性和细节
+    如果存在bounds.json文件，则使用其中记录的尺寸
     """
+    # 尝试加载bounds.json
+    bounds_data = load_bounds_json(svg_path)
+    if bounds_data:
+        # 使用bounds.json中记录的尺寸
+        target_width = int(bounds_data['svg_width_px'])
+        target_height = int(bounds_data['svg_height_px'])
+        print(f"使用bounds.json中的尺寸: {target_width}x{target_height}")
+    else:
+        # 使用默认尺寸但仍然保持宽高比
+        target_width, target_height = output_size
+        print(f"未找到bounds.json，使用默认尺寸: {target_width}x{target_height}")
+    
     # 使用高质量设置进行初始渲染
     png_data = cairosvg.svg2png(
         url=svg_path,
@@ -27,17 +56,23 @@ def svg_to_occupancy_grid(svg_path, output_size=(4000, 4000), line_thickness=2):
     # 将PNG数据转换为PIL Image
     img = Image.open(io.BytesIO(png_data))
     
-    # 获取原始尺寸
-    original_width, original_height = img.size
-    
-    # 计算保持宽高比的新尺寸
-    aspect_ratio = original_width / original_height
-    if aspect_ratio > 1:
-        new_width = output_size[0]
-        new_height = int(output_size[0] / aspect_ratio)
+    # 使用bounds.json中的尺寸或保持宽高比调整大小
+    if bounds_data:
+        # 直接使用bounds.json中的尺寸
+        new_width = target_width
+        new_height = target_height
     else:
-        new_height = output_size[1]
-        new_width = int(output_size[1] * aspect_ratio)
+        # 获取原始尺寸
+        original_width, original_height = img.size
+        
+        # 计算保持宽高比的新尺寸
+        aspect_ratio = original_width / original_height
+        if aspect_ratio > 1:
+            new_width = target_width
+            new_height = int(target_width / aspect_ratio)
+        else:
+            new_height = target_height
+            new_width = int(target_height * aspect_ratio)
     
     # 使用Lanczos重采样调整大小
     img = img.resize((new_width, new_height), Image.LANCZOS)
@@ -84,9 +119,9 @@ def save_occupancy_grid(occupancy_grid, output_path):
 # 使用示例
 if __name__ == "__main__":
     # --- 用户可修改路径 ---
-    input_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/data_img/svg_filtered_trial/" # 输入 SVG 文件夹
-    output_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/data_img/png_filtered_trial/" # 输出 PNG 文件夹
-    target_output_size = (4000, 4000) # 目标 PNG 尺寸
+    input_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/img/svg_manual_filter/" # 输入 SVG 文件夹
+    output_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/img/png_follow_bounds/" # 输出 PNG 文件夹
+    target_output_size = (4000, 4000) # 默认目标 PNG 尺寸（当bounds.json不存在时使用）
     target_line_thickness = 1        # 输出 PNG 中的线条粗细 (1表示保持原样)
     # --------------------
 
