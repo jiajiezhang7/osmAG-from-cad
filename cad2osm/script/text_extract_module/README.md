@@ -312,3 +312,13 @@ python /home/jay/AGSeg_ws/AGSeg/cad2osm/script/text_extract_module/text_extracto
 --config /home/jay/AGSeg_ws/AGSeg/cad2osm/config/params.yaml \
 --visualize
 ```
+
+```bash
+python /home/jay/AGSeg_ws/AGSeg/cad2osm/script/text_extract_module/text_extractor.py --mode full \
+--dxf /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/dxf/original/SIST-F2.dxf \
+--bounds /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/img/svg_manual_filter/SIST-F2-filtered_new.bounds.json \
+--osm /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/ag_osm/SIST-F2-filtered_new260_osmAG.osm \
+--output /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/ag_osm/SIST-F2_texted.osm \
+--config /home/jay/AGSeg_ws/AGSeg/cad2osm/config/params.yaml \
+--visualize
+```
