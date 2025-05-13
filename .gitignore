@@ -31,6 +31,8 @@
 *.out
 *.app
 
+data/
+__pycache__/
 *~
 build/
 bin/
