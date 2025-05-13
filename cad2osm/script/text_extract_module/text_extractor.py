@@ -366,14 +366,10 @@ def update_osm_step(osm_path, mapping_result, output_path, visualize=False, visu
                         })
                         matched_text_count += 1
             
-            # 添加未匹配的文本
-            unmatched_text_count = 0
-            for text in mapping_result['unmatched']:
-                if 'pixel_point' in text:
-                    text_data.append(text)
-                    unmatched_text_count += 1
+            # 不再添加未匹配的文本到可视化中
+            unmatched_text_count = len(mapping_result['unmatched'])
             
-            print(f"准备可视化 {matched_text_count} 个已匹配文本和 {unmatched_text_count} 个未匹配文本")
+            print(f"准备可视化 {matched_text_count} 个已匹配文本（未匹配的 {unmatched_text_count} 个文本将不显示）")
             
             # 调用可视化函数
             visualize_matching(rooms_data, text_data, mapping_result, visualization_path)
