@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-合并两张osmAG文件
+合并多张osmAG文件
 
-此脚本用于合并两张属于同一栋楼的osmAG文件，通过识别同名的电梯和楼梯区域，(因此在执行该脚本前,你应该确保不同楼层具有同名同形的电梯或楼梯)
+此脚本用于合并多张属于同一栋楼的osmAG文件，通过识别同名的电梯和楼梯区域，(因此在执行该脚本前,你应该确保不同楼层具有同名同形的电梯或楼梯)
 计算它们之间的相对位置偏差，然后整体移动待校正图，最终生成合并后的osmAG文件。
 
 用法：
+    # 合并两个文件
     python merge_osm.py --reference <参照OSM文件路径> --target <待校正OSM文件路径> --output <输出OSM文件路径>
+    
+    # 合并多个文件
+    python merge_osm.py --reference <参照OSM文件路径> --targets <待校正OSM文件路径1> <待校正OSM文件路径2> ... --output <输出OSM文件路径>
 """
 
 import argparse
@@ -503,9 +507,10 @@ def merge_osm_files(ref_root, ref_tree, target_root, target_tree):
 
 def main():
     # 解析命令行参数
-    parser = argparse.ArgumentParser(description='合并两张osmAG文件')
+    parser = argparse.ArgumentParser(description='合并多张osmAG文件')
     parser.add_argument('--reference', required=True, help='参照OSM文件路径')
-    parser.add_argument('--target', required=True, help='待校正OSM文件路径')
+    parser.add_argument('--target', help='待校正OSM文件路径（单个文件）')
+    parser.add_argument('--targets', nargs='+', help='待校正OSM文件路径列表（多个文件）')
     parser.add_argument('--output', required=True, help='输出OSM文件路径')
     parser.add_argument('--config', default=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'config', 'params.yaml'), help='配置文件路径')
     parser.add_argument('--debug', action='store_true', help='启用调试模式，输出更多信息')
@@ -515,67 +520,140 @@ def main():
     parser.add_argument('--keep-target-root', action='store_true', help='保留待校正图中的root节点（默认删除）')
     args = parser.parse_args()
     
+    # 确保至少有一个target参数被提供
+    if args.target is None and args.targets is None:
+        print("错误：必须提供至少一个待校正OSM文件路径（使用--target或--targets）")
+        return
+        
+    # 将单个target转换为targets列表格式
+    target_files = []
+    if args.target:
+        target_files.append(args.target)
+    if args.targets:
+        target_files.extend(args.targets)
+    
     # 加载配置文件
     config_path = Path(args.config)
     config = load_yaml_config(config_path)
     
-    # 加载OSM文件
+    # 加载参照OSM文件
     ref_root, ref_tree = load_osm_file(args.reference)
-    target_root, target_tree = load_osm_file(args.target)
     
-    if ref_root is None or target_root is None:
-        print("错误：无法加载OSM文件")
+    if ref_root is None:
+        print("错误：无法加载参照OSM文件")
         return
         
-    # 查找参照图和待校正图中的root节点
+    # 查找参照图中的root节点
     ref_root_node = find_root_node(ref_root)
-    target_root_node = find_root_node(target_root)
     
     if ref_root_node is not None:
         print(f"找到参照图中的root节点，ID: {ref_root_node.get('id')}")
     else:
         print("警告：参照图中没有找到root节点")
-        
-    if target_root_node is not None:
-        print(f"找到待校正图中的root节点，ID: {target_root_node.get('id')}")
-    else:
-        print("警告：待校正图中没有找到root节点")
     
-    # 查找电梯区域
+    # 创建合并后的树对象（初始为参照图的深拷贝）
+    merged_tree = copy.deepcopy(ref_tree)
+    merged_root = merged_tree.getroot()
+    
+    # 确保参照图中的所有元素都有version属性
+    for node in merged_root.findall('.//node'):
+        ensure_version_attribute(node)
+    for way in merged_root.findall('.//way'):
+        ensure_version_attribute(way)
+    for relation in merged_root.findall('.//relation'):
+        ensure_version_attribute(relation)
+    
+    # 查找参照图中的电梯和楼梯区域
     ref_elevators = find_matching_areas(ref_root, 'elevator')
-    target_elevators = find_matching_areas(target_root, 'elevator')
-    
-    # 查找楼梯区域
     ref_stairs = find_matching_areas(ref_root, 'stairs')
-    target_stairs = find_matching_areas(target_root, 'stairs')
     
-    # 合并区域字典
+    # 合并参照区域字典
     ref_areas = defaultdict(list)
-    target_areas = defaultdict(list)
-    
     for name, areas in ref_elevators.items():
         ref_areas[name].extend(areas)
     for name, areas in ref_stairs.items():
         ref_areas[name].extend(areas)
     
-    for name, areas in target_elevators.items():
-        target_areas[name].extend(areas)
-    for name, areas in target_stairs.items():
-        target_areas[name].extend(areas)
+    # 查找参照图中的最大ID，用于后续ID映射
+    ref_max_ids = find_max_ids(ref_root)
     
-    # 计算偏移量
-    lat_offset, lon_offset = calculate_offset(ref_areas, target_areas)
-    
-    # 应用偏移量
-    target_root = apply_offset(target_root, lat_offset, lon_offset)
-    
-    # 合并OSM文件
-    merged_tree = merge_osm_files(ref_root, ref_tree, target_root, target_tree)
+    # 处理每个待校正文件
+    for i, target_file in enumerate(target_files):
+        print(f"\n处理待校正文件 {i+1}/{len(target_files)}: {target_file}")
+        
+        # 加载待校正OSM文件
+        target_root, target_tree = load_osm_file(target_file)
+        
+        if target_root is None:
+            print(f"错误：无法加载待校正OSM文件 {target_file}，跳过此文件")
+            continue
+            
+        # 查找待校正图中的root节点
+        target_root_node = find_root_node(target_root)
+        
+        if target_root_node is not None:
+            print(f"找到待校正图中的root节点，ID: {target_root_node.get('id')}")
+        else:
+            print("警告：待校正图中没有找到root节点")
+        
+        # 查找待校正图中的电梯和楼梯区域
+        target_elevators = find_matching_areas(target_root, 'elevator')
+        target_stairs = find_matching_areas(target_root, 'stairs')
+        
+        # 合并待校正区域字典
+        target_areas = defaultdict(list)
+        for name, areas in target_elevators.items():
+            target_areas[name].extend(areas)
+        for name, areas in target_stairs.items():
+            target_areas[name].extend(areas)
+        
+        # 计算偏移量
+        lat_offset, lon_offset = calculate_offset(ref_areas, target_areas)
+        
+        # 应用偏移量
+        target_root = apply_offset(target_root, lat_offset, lon_offset)
+        
+        # 更新待校正图中的ID，确保与已合并的ID不冲突
+        target_root, id_mapping = update_ids(target_root, ref_max_ids)
+        
+        # 更新参照图的最大ID，为下一个待校正图做准备
+        for key in ref_max_ids.keys():
+            # 找出映射后的最大ID值
+            mapped_ids = [int(id_mapping[old_id]) for old_id in id_mapping 
+                         if old_id.startswith('-') and id_mapping[old_id].isdigit()]
+            max_id_in_target = max(mapped_ids) if mapped_ids else 0
+            ref_max_ids[key] = max(ref_max_ids[key], max_id_in_target)
+        
+        # 查找待校正图中的root节点，以便在合并时排除
+        target_root_node = find_root_node(target_root)
+        target_root_node_id = target_root_node.get('id') if target_root_node is not None else None
+        
+        if target_root_node is not None:
+            print(f"找到待校正图中的root节点，ID: {target_root_node_id}，将在合并时排除")
+        
+        # 将待校正图中的节点添加到合并后的树中，并确保有version属性，但排除root节点
+        for node in target_root.findall('.//node'):
+            # 跳过root节点
+            if target_root_node is not None and node.get('id') == target_root_node_id:
+                continue
+                
+            ensure_version_attribute(node)
+            merged_root.append(copy.deepcopy(node))
+        
+        # 将待校正图中的way添加到合并后的树中，并确保有version属性
+        for way in target_root.findall('.//way'):
+            ensure_version_attribute(way)
+            merged_root.append(copy.deepcopy(way))
+        
+        # 将待校正图中的relation添加到合并后的树中，并确保有version属性
+        for relation in target_root.findall('.//relation'):
+            ensure_version_attribute(relation)
+            merged_root.append(copy.deepcopy(relation))
     
     # 保存合并后的OSM文件
     save_osm_file(merged_tree, args.output)
     
-    print(f"成功合并OSM文件并保存到: {args.output}")
+    print(f"成功合并 {len(target_files)} 个OSM文件并保存到: {args.output}")
 
 
 if __name__ == "__main__":
