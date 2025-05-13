@@ -21,12 +21,10 @@ import matplotlib
 matplotlib.rcParams['font.sans-serif'] = ['Noto Sans CJK SC', 'AR PL UMing CN', 'Droid Sans Fallback', 'DejaVu Sans', 'sans-serif']  # 使用系统中已有的中文字体
 matplotlib.rcParams['axes.unicode_minus'] = False  # 解决保存图像时负号'-'显示为方块的问题
 
-# 添加父目录到Python路径
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from text_extract_module.dxf_text_to_pixel import load_json_file, save_json_file, dxf_to_pixel_coordinates, convert_text_coordinates
-from text_extract_module.extract_room_polygons import load_osm_file, load_yaml_config, latlon_to_pixel, extract_room_polygons
-from text_extract_module.match_text_to_rooms import point_in_polygon, distance_to_polygon, match_text_to_rooms, calculate_center_point
+# 由于文件已经在同一目录下，直接导入模块
+from dxf_text_to_pixel import load_json_file, save_json_file, dxf_to_pixel_coordinates, convert_text_coordinates
+from extract_room_polygons import load_osm_file, load_yaml_config, latlon_to_pixel, extract_room_polygons
+from match_text_to_rooms import point_in_polygon, distance_to_polygon, match_text_to_rooms, calculate_center_point
 
 # TODO 整合后的输入和输出
     # 整合后的输入：

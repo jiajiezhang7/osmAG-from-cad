@@ -1,8 +1,85 @@
-# CAD2OSM 坐标转换工具集
+# CAD2OSM 文本提取模块
 
-这个工具集用于处理CAD文件到OSM格式的转换过程中的坐标转换问题，特别是将DXF文本坐标与AreaGraph处理后的房间坐标进行匹配。
+这个模块用于处理CAD文件到OSM格式的转换过程中的文本提取和匹配问题，特别是将DXF文本坐标与AreaGraph处理后的房间坐标进行匹配，并将文本标签添加到OSM文件中。
 
-## 工具说明
+## 统一入口脚本
+
+### 统一入口脚本 (`text_extractor.py`)
+
+为了简化工作流程，我们提供了一个统一的入口脚本 `text_extractor.py`，它整合了文本提取模块的所有功能，提供一站式处理流程。这个脚本可以执行完整的文本提取和匹配流程，也可以单独执行各个步骤。
+
+#### 完整流程模式
+
+```bash
+python text_extractor.py --mode full \
+    --dxf <dxf_file> \
+    --bounds <bounds_json> \
+    --osm <osmAG.osm> \
+    --output <output_osm> \
+    [--config <params.yaml>] \
+    [--visualize] \
+    [--layer <layer_name>]
+```
+
+参数:
+- `--dxf`: DXF文件路径
+- `--bounds`: dxf2svg.py生成的边界信息JSON文件路径
+- `--osm`: AreaGraph生成的osmAG.osm文件路径
+- `--output`: 输出的更新后的OSM文件路径
+- `--config`: 可选的配置文件路径
+- `--visualize`: 是否生成可视化图像
+- `--visualization-output`: 可视化图像保存路径
+- `--layer`: DXF文本图层名称，默认为'I—平面—文字'
+- `--nearby-threshold`: 附近匹配的距离阈值，默认为50像素
+- `--max-center-distance-ratio`: 内部匹配时，文本到中心距离与房间特征尺寸的比例阈值，默认为0.7
+
+#### 分步执行模式
+
+也可以单独执行各个步骤：
+
+1. 提取文本：
+```bash
+python text_extractor.py --mode extract_text \
+    --dxf <dxf_file> \
+    --output <output_json> \
+    [--layer <layer_name>]
+```
+
+2. 转换坐标：
+```bash
+python text_extractor.py --mode convert_coordinates \
+    --text <text_json> \
+    --bounds <bounds_json> \
+    --output <output_json>
+```
+
+3. 提取房间多边形：
+```bash
+python text_extractor.py --mode extract_rooms \
+    --osm <osmAG.osm> \
+    --output <output_json>
+```
+
+4. 匹配文本到房间：
+```bash
+python text_extractor.py --mode match_text \
+    --text <text_pixel_json> \
+    --osm <osmAG.osm> \
+    --output <mapping_json>
+```
+
+5. 更新OSM文件：
+```bash
+python text_extractor.py --mode update_osm \
+    --text <mapping_json> \
+    --osm <osmAG.osm> \
+    --output <output_osm> \
+    [--visualize]
+```
+
+## 原始工具说明
+
+以下是各个独立工具的说明，这些工具已被统一入口脚本整合：
 
 ### 1. DXF文本坐标到像素坐标转换 (`dxf_text_to_pixel.py`)
 
@@ -47,6 +124,25 @@ python match_text_to_rooms.py --text-json <pixel_text.json> --rooms-json <rooms.
 
 ## 完整工作流程
 
+### 使用统一入口脚本的工作流程
+
+1. 使用`dxf2svg.py`将DXF转换为SVG（同时生成.bounds.json文件）
+2. 使用`svg2png.py`将SVG转换为PNG
+3. 使用AreaGraph处理PNG生成osmAG.osm
+4. 使用`text_extractor.py`一站式处理文本提取、坐标转换、房间提取、文本匹配和OSM更新
+
+```bash
+python text_extractor.py --mode full \
+    --dxf <dxf_file> \
+    --bounds <bounds_json> \
+    --osm <osmAG.osm> \
+    --output <output_osm> \
+    --config <params.yaml> \
+    --visualize
+```
+
+### 使用独立工具的工作流程
+
 1. 使用`extract_dxf_text.py`从DXF文件中提取文本信息
 2. 使用`dxf2svg.py`将DXF转换为SVG（同时生成.bounds.json文件）
 3. 使用`svg2png.py`将SVG转换为PNG
@@ -54,6 +150,7 @@ python match_text_to_rooms.py --text-json <pixel_text.json> --rooms-json <rooms.
 5. 使用`dxf_text_to_pixel.py`将DXF文本坐标转换为像素坐标
 6. 使用`extract_room_polygons.py`从osmAG.osm提取房间多边形
 7. 使用`match_text_to_rooms.py`将文本匹配到房间
+8. 使用`add_text_to_osm.py`更新OSM文件
 
 ## 坐标转换原理
 
@@ -87,12 +184,29 @@ pixel_y = svg_height - (dxf_y - min_y_padded) * scale
 
 
 
-<!-- python /home/jay/AGSeg_ws/AGSeg/cad2osm/script/core_process/add_text_to_osm.py \
+## 使用示例
+
+### 使用原始 add_text_to_osm.py 的示例
+
+```bash
+python /home/jay/AGSeg_ws/AGSeg/cad2osm/script/text_extract_module/add_text_to_osm.py \
 --text-json /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/extract_text/SIST-F1.json \
 --bounds-json /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/img/svg_manual_filter/SIST-F1-filtered_new.bounds.json \
---input-osm /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/ag_osm/SIST-F1_clear_edited260_filtered_osmAG.osm \
+--input-osm /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/ag_osm/SIST-F1_clear_edited260_merged_filtered_osmAG.osm \
 --output-osm /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/ag_osm/SIST-F1_texted.osm \
 --config /home/jay/AGSeg_ws/AGSeg/cad2osm/config/params.yaml \
---visualize 
+--visualize \
 --output-mapping-json /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/ag_osm/SIST-F1_mapping.json
--->
+```
+
+### 使用新的统一入口脚本的示例
+
+```bash
+python /home/jay/AGSeg_ws/AGSeg/cad2osm/script/text_extract_module/text_extractor.py --mode full \
+--dxf /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/dxf/original/SIST-F1.dxf \
+--bounds /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/img/svg_manual_filter/SIST-F1-filtered_new.bounds.json \
+--osm /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/ag_osm/SIST-F1_clear_edited260_merged_filtered_osmAG.osm \
+--output /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/ag_osm/SIST-F1_texted_new.osm \
+--config /home/jay/AGSeg_ws/AGSeg/cad2osm/config/params.yaml \
+--visualize
+```
