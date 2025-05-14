@@ -1,0 +1,10 @@
+PyQt5>=5.15.0
+PyYAML>=6.0
+numpy>=1.20.0
+matplotlib>=3.4.0
+Pillow>=8.0.0
+ezdxf>=0.16.0
+svgwrite>=1.4.0
+svgpathtools>=1.4.0
+cairosvg>=2.5.0
+opencv-python-headless>=4.5.0

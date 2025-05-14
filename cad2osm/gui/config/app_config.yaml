@@ -1,0 +1,34 @@
+# CAD2OSM图形界面应用配置文件
+
+# 项目列表
+projects: {}
+
+# 当前项目
+current_project: null
+
+# 默认设置
+default_settings:
+  # CAD预处理设置
+  process:
+    resolution: 4000
+    padding_ratio: 3.0
+    line_thickness: 1
+  
+  # 文本提取设置
+  text:
+    layer_name: "I—平面—文字"
+    nearby_threshold: 50
+    max_center_distance_ratio: 0.7
+    visualize: true
+    filter_text_list:
+      - "卫生间"
+      - "电梯"
+      - "楼梯"
+      - "走廊"
+      - "管道井"
+  
+  # OSM合并设置
+  merge:
+    area_type: "两者"
+    offset_method: "顶点平均"
+    min_matches: 2
