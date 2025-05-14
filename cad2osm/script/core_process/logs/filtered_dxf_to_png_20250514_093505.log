@@ -1,0 +1,45 @@
+2025-05-14 09:35:05,799 - INFO - 未指定配置文件或文件不存在，将使用默认配置
+2025-05-14 09:35:05,799 - INFO - 找到 5 个DXF文件，开始批量处理...
+2025-05-14 09:35:05,799 - INFO - 处理文件 1/5: SIST-F1-filtered_new.dxf
+2025-05-14 09:35:05,799 - INFO - 开始处理文件: SIST-F1-filtered_new.dxf
+2025-05-14 09:35:05,799 - INFO - 步骤1: 将DXF转换为SVG - SIST-F1-filtered_new.dxf
+2025-05-14 09:35:06,144 - INFO - DXF转换SVG成功: 转换成功
+2025-05-14 09:35:06,144 - INFO - 步骤2: 将SVG转换为PNG - SIST-F1-filtered_new.svg
+2025-05-14 09:35:21,007 - INFO - SVG转换PNG成功: /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/img/png_manual_filter/png/SIST-F1-filtered_new.png
+2025-05-14 09:35:21,012 - INFO - 文件 SIST-F1-filtered_new.dxf 处理完成，耗时: 15.21 秒
+2025-05-14 09:35:21,012 - INFO - 进度: 20.0% (1/5)
+2025-05-14 09:35:21,012 - INFO - 处理文件 2/5: SIST-F3-filtered_new.dxf
+2025-05-14 09:35:21,012 - INFO - 开始处理文件: SIST-F3-filtered_new.dxf
+2025-05-14 09:35:21,012 - INFO - 步骤1: 将DXF转换为SVG - SIST-F3-filtered_new.dxf
+2025-05-14 09:35:21,233 - INFO - DXF转换SVG成功: 转换成功
+2025-05-14 09:35:21,233 - INFO - 步骤2: 将SVG转换为PNG - SIST-F3-filtered_new.svg
+2025-05-14 09:35:32,511 - INFO - SVG转换PNG成功: /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/img/png_manual_filter/png/SIST-F3-filtered_new.png
+2025-05-14 09:35:32,511 - INFO - 文件 SIST-F3-filtered_new.dxf 处理完成，耗时: 11.50 秒
+2025-05-14 09:35:32,512 - INFO - 进度: 40.0% (2/5)
+2025-05-14 09:35:32,512 - INFO - 处理文件 3/5: SIST-F4-filtered_new.dxf
+2025-05-14 09:35:32,512 - INFO - 开始处理文件: SIST-F4-filtered_new.dxf
+2025-05-14 09:35:32,512 - INFO - 步骤1: 将DXF转换为SVG - SIST-F4-filtered_new.dxf
+2025-05-14 09:35:32,953 - INFO - DXF转换SVG成功: 转换成功
+2025-05-14 09:35:32,953 - INFO - 步骤2: 将SVG转换为PNG - SIST-F4-filtered_new.svg
+2025-05-14 09:35:48,465 - INFO - SVG转换PNG成功: /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/img/png_manual_filter/png/SIST-F4-filtered_new.png
+2025-05-14 09:35:48,467 - INFO - 文件 SIST-F4-filtered_new.dxf 处理完成，耗时: 15.95 秒
+2025-05-14 09:35:48,467 - INFO - 进度: 60.0% (3/5)
+2025-05-14 09:35:48,467 - INFO - 处理文件 4/5: SIST-F5-filtered_new.dxf
+2025-05-14 09:35:48,467 - INFO - 开始处理文件: SIST-F5-filtered_new.dxf
+2025-05-14 09:35:48,467 - INFO - 步骤1: 将DXF转换为SVG - SIST-F5-filtered_new.dxf
+2025-05-14 09:35:49,162 - INFO - DXF转换SVG成功: 转换成功
+2025-05-14 09:35:49,162 - INFO - 步骤2: 将SVG转换为PNG - SIST-F5-filtered_new.svg
+2025-05-14 09:36:04,599 - INFO - SVG转换PNG成功: /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/img/png_manual_filter/png/SIST-F5-filtered_new.png
+2025-05-14 09:36:04,602 - INFO - 文件 SIST-F5-filtered_new.dxf 处理完成，耗时: 16.14 秒
+2025-05-14 09:36:04,602 - INFO - 进度: 80.0% (4/5)
+2025-05-14 09:36:04,602 - INFO - 处理文件 5/5: SIST-F2-filtered_new.dxf
+2025-05-14 09:36:04,602 - INFO - 开始处理文件: SIST-F2-filtered_new.dxf
+2025-05-14 09:36:04,602 - INFO - 步骤1: 将DXF转换为SVG - SIST-F2-filtered_new.dxf
+2025-05-14 09:36:05,071 - INFO - DXF转换SVG成功: 转换成功
+2025-05-14 09:36:05,071 - INFO - 步骤2: 将SVG转换为PNG - SIST-F2-filtered_new.svg
+2025-05-14 09:36:19,777 - INFO - SVG转换PNG成功: /home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/img/png_manual_filter/png/SIST-F2-filtered_new.png
+2025-05-14 09:36:19,780 - INFO - 文件 SIST-F2-filtered_new.dxf 处理完成，耗时: 15.18 秒
+2025-05-14 09:36:19,780 - INFO - 进度: 100.0% (5/5)
+2025-05-14 09:36:19,780 - INFO - 批量处理完成
+2025-05-14 09:36:19,780 - INFO - 成功处理: 5/5
+2025-05-14 09:36:19,780 - INFO - 处理失败: 0/5
