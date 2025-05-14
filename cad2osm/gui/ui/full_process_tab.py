@@ -222,12 +222,133 @@ class FullProcessTab(QWidget):
     
     def start_processing(self):
         """开始处理"""
-        # 这里将实现调用处理模块的功能
-        self.log_message.emit("开始完整处理流程...")
-        QMessageBox.information(self, "功能开发中", "完整处理流程功能正在开发中...")
+        # 验证输入
+        input_path = self.input_path_edit.text().strip()
+        if not input_path:
+            QMessageBox.warning(self, "输入错误", "请选择输入文件或目录")
+            return
+        
+        output_dir = self.output_dir_edit.text().strip()
+        if not output_dir:
+            QMessageBox.warning(self, "输入错误", "请选择输出目录")
+            return
+        
+        # 确保输出目录存在
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # 获取参数
+        config_path = self.config_path_edit.text().strip() or None
+        resolution = self.resolution_spin.value()
+        padding_ratio = self.padding_spin.value() / 100.0  # 转换为小数
+        line_thickness = self.line_thickness_spin.value()
+        
+        # 获取跳过步骤设置
+        skip_steps = {
+            'skip_dwg_to_dxf': self.skip_dwg_to_dxf_check.isChecked(),
+            'skip_dxf_filter': self.skip_dxf_filter_check.isChecked(),
+            'skip_dxf_to_svg': self.skip_dxf_to_svg_check.isChecked(),
+            'skip_svg_to_png': self.skip_svg_to_png_check.isChecked()
+        }
+        
+        # 获取处理模式
+        is_batch = self.batch_dir_radio.isChecked()
+        
+        # 禁用开始按钮，启用取消按钮
+        self.start_button.setEnabled(False)
+        self.cancel_button.setEnabled(True)
+        
+        # 更新状态
+        self.status_label.setText("正在处理...")
+        self.total_progress_bar.setValue(0)
+        self.step_progress_bar.setValue(0)
+        
+        # 调用处理模块
+        if is_batch:
+            self.log_message.emit(f"开始批量完整处理流程...\n输入目录: {input_path}\n输出目录: {output_dir}")
+            
+            # 启动批量处理线程
+            self.process_module.start_batch_full_process(
+                input_dir=input_path,
+                output_dir=output_dir,
+                config_path=config_path,
+                resolution=resolution,
+                padding_ratio=padding_ratio,
+                line_thickness=line_thickness,
+                skip_steps=skip_steps,
+                progress_callback=self.update_progress,
+                completion_callback=self.processing_completed
+            )
+        else:
+            self.log_message.emit(f"开始单文件完整处理流程...\n输入文件: {input_path}\n输出目录: {output_dir}")
+            
+            # 启动单文件处理线程
+            self.process_module.start_full_process(
+                input_path=input_path,
+                output_dir=output_dir,
+                config_path=config_path,
+                params={
+                    'resolution': resolution,
+                    'padding_ratio': padding_ratio,
+                    'line_thickness': line_thickness,
+                    'skip_dwg_to_dxf': 1 in skip_steps,
+                    'skip_dxf_filter': 2 in skip_steps,
+                    'skip_dxf_to_svg': 3 in skip_steps,
+                    'skip_svg_to_png': 4 in skip_steps
+                }
+            )
     
     def cancel_processing(self):
         """取消处理"""
-        # 这里将实现取消处理的功能
-        self.log_message.emit("取消处理")
-        QMessageBox.information(self, "功能开发中", "取消处理功能正在开发中...")
+        # 调用处理模块的取消方法
+        self.process_module.cancel_processing()
+        
+        # 更新UI状态
+        self.status_label.setText("已取消")
+        self.start_button.setEnabled(True)
+        self.cancel_button.setEnabled(False)
+        
+        # 记录日志
+        self.log_message.emit("完整处理流程已取消")
+    
+    def update_progress(self, total_progress, step_progress=None, step_name=None, status=None):
+        """更新进度和状态"""
+        # 更新总体进度条
+        self.total_progress_bar.setValue(int(total_progress * 100))
+        
+        # 更新当前步骤进度条
+        if step_progress is not None:
+            self.step_progress_bar.setValue(int(step_progress * 100))
+        
+        # 更新状态文本
+        if status is not None:
+            self.status_label.setText(status)
+        elif step_name is not None:
+            self.status_label.setText(f"正在处理: {step_name}")
+    
+    def processing_completed(self, success, message, result_files=None):
+        """处理完成回调"""
+        # 更新UI状态
+        self.start_button.setEnabled(True)
+        self.cancel_button.setEnabled(False)
+        
+        if success:
+            # 成功完成
+            self.status_label.setText("完成")
+            self.total_progress_bar.setValue(100)
+            self.step_progress_bar.setValue(100)
+            
+            # 记录日志
+            self.log_message.emit(f"完整处理流程完成: {message}")
+            
+            # 显示完成消息
+            result_files_text = ""
+            if result_files and len(result_files) > 0:
+                result_files_text = "\n\n生成的文件:\n" + "\n".join(result_files)
+            
+            QMessageBox.information(self, "处理完成", 
+                                   f"完整处理流程已完成。\n\n{message}{result_files_text}")
+        else:
+            # 处理失败
+            self.status_label.setText("失败")
+            self.log_message.emit(f"完整处理流程失败: {message}")
+            QMessageBox.warning(self, "处理失败", f"完整处理流程中出现错误: {message}")

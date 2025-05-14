@@ -261,12 +261,102 @@ class SemiProcessTab(QWidget):
         padding_ratio = self.padding_spin.value() / 100.0  # 转换为小数
         line_thickness = self.line_thickness_spin.value()
         
-        # 这里将实现调用处理模块的功能
-        self.log_message.emit(f"开始半自动处理流程...\n输入: {input_path}\n输出: {output_dir}")
-        QMessageBox.information(self, "功能开发中", "半自动处理流程功能正在开发中...")
+        # 获取处理模式
+        is_batch = self.batch_dir_radio.isChecked()
+        
+        # 禁用开始按钮，启用取消按钮
+        self.start_button.setEnabled(False)
+        self.cancel_button.setEnabled(True)
+        
+        # 更新状态
+        self.status_label.setText("正在处理...")
+        self.total_progress_bar.setValue(0)
+        self.step_progress_bar.setValue(0)
+        
+        # 调用处理模块
+        if is_batch:
+            self.log_message.emit(f"开始批量半自动处理流程...\n输入目录: {input_path}\n输出目录: {output_dir}")
+            
+            # 启动批量处理线程
+            self.process_module.start_semi_process(
+                input_path=input_path,
+                output_dir=output_dir,
+                config_path=config_path,
+                params={
+                    'resolution': resolution,
+                    'padding_ratio': padding_ratio,
+                    'line_thickness': line_thickness,
+                    'is_batch': True
+                }
+            )
+        else:
+            self.log_message.emit(f"开始单文件半自动处理流程...\n输入文件: {input_path}\n输出目录: {output_dir}")
+            
+            # 启动单文件处理线程
+            self.process_module.start_semi_process(
+                input_path=input_path,
+                output_dir=output_dir,
+                config_path=config_path,
+                params={
+                    'resolution': resolution,
+                    'padding_ratio': padding_ratio,
+                    'line_thickness': line_thickness,
+                    'is_batch': False
+                }
+            )
     
     def cancel_processing(self):
         """取消处理"""
-        # 这里将实现取消处理的功能
-        self.log_message.emit("取消处理")
-        QMessageBox.information(self, "功能开发中", "取消处理功能正在开发中...")
+        # 调用处理模块的取消方法
+        self.process_module.cancel_processing()
+        
+        # 更新UI状态
+        self.status_label.setText("已取消")
+        self.start_button.setEnabled(True)
+        self.cancel_button.setEnabled(False)
+        
+        # 记录日志
+        self.log_message.emit("半自动处理流程已取消")
+    
+    def update_progress(self, total_progress, step_progress=None, step_name=None, status=None):
+        """更新进度和状态"""
+        # 更新总体进度条
+        self.total_progress_bar.setValue(int(total_progress * 100))
+        
+        # 更新当前步骤进度条
+        if step_progress is not None:
+            self.step_progress_bar.setValue(int(step_progress * 100))
+        
+        # 更新状态文本
+        if status is not None:
+            self.status_label.setText(status)
+        elif step_name is not None:
+            self.status_label.setText(f"正在处理: {step_name}")
+    
+    def processing_completed(self, success, message, result_files=None):
+        """处理完成回调"""
+        # 更新UI状态
+        self.start_button.setEnabled(True)
+        self.cancel_button.setEnabled(False)
+        
+        if success:
+            # 成功完成
+            self.status_label.setText("完成")
+            self.total_progress_bar.setValue(100)
+            self.step_progress_bar.setValue(100)
+            
+            # 记录日志
+            self.log_message.emit(f"半自动处理流程完成: {message}")
+            
+            # 显示完成消息
+            result_files_text = ""
+            if result_files and len(result_files) > 0:
+                result_files_text = "\n\n生成的文件:\n" + "\n".join(result_files)
+            
+            QMessageBox.information(self, "处理完成", 
+                                   f"半自动处理流程已完成。\n\n{message}{result_files_text}")
+        else:
+            # 处理失败
+            self.status_label.setText("失败")
+            self.log_message.emit(f"半自动处理流程失败: {message}")
+            QMessageBox.warning(self, "处理失败", f"半自动处理流程中出现错误: {message}")

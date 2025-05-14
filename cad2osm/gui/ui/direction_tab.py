@@ -195,12 +195,76 @@ class DirectionTab(QWidget):
         # 确保输出目录存在
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         
-        # 这里将实现调用方向校正模块的功能
+        # 禁用开始按钮，启用取消按钮
+        self.start_button.setEnabled(False)
+        self.cancel_button.setEnabled(True)
+        
+        # 重置统计信息
+        self.processed_ways_label.setText("0")
+        self.reversed_ways_label.setText("0")
+        
+        # 更新状态
+        self.status_label.setText("正在处理...")
+        self.progress_bar.setValue(0)
+        
+        # 调用方向校正模块
         self.log_message.emit(f"开始方向校正...\n输入: {osm_path}\n输出: {output_path}")
-        QMessageBox.information(self, "功能开发中", "方向校正功能正在开发中...")
+        
+        # 启动处理线程
+        self.direction_module.start_correction(
+            osm_path=osm_path,
+            output_path=output_path,
+            progress_callback=self.update_progress,
+            completion_callback=self.correction_completed
+        )
     
     def cancel_correction(self):
         """取消方向校正"""
-        # 这里将实现取消方向校正的功能
-        self.log_message.emit("取消方向校正")
-        QMessageBox.information(self, "功能开发中", "取消方向校正功能正在开发中...")
+        # 调用方向校正模块的取消方法
+        self.direction_module.cancel_correction()
+        
+        # 更新UI状态
+        self.status_label.setText("已取消")
+        self.start_button.setEnabled(True)
+        self.cancel_button.setEnabled(False)
+        
+        # 记录日志
+        self.log_message.emit("方向校正已取消")
+    
+    def update_progress(self, progress, processed_ways=None, reversed_ways=None, status=None):
+        """更新进度和状态"""
+        # 更新进度条
+        self.progress_bar.setValue(int(progress * 100))
+        
+        # 更新统计信息
+        if processed_ways is not None:
+            self.processed_ways_label.setText(str(processed_ways))
+        
+        if reversed_ways is not None:
+            self.reversed_ways_label.setText(str(reversed_ways))
+        
+        # 更新状态文本
+        if status is not None:
+            self.status_label.setText(status)
+    
+    def correction_completed(self, success, message, processed_ways, reversed_ways):
+        """校正完成回调"""
+        # 更新UI状态
+        self.start_button.setEnabled(True)
+        self.cancel_button.setEnabled(False)
+        
+        # 更新统计信息
+        self.processed_ways_label.setText(str(processed_ways))
+        self.reversed_ways_label.setText(str(reversed_ways))
+        
+        if success:
+            # 成功完成
+            self.status_label.setText("完成")
+            self.progress_bar.setValue(100)
+            self.log_message.emit(f"方向校正完成: {message}")
+            QMessageBox.information(self, "校正完成", f"方向校正已完成。\n\n处理的way数量: {processed_ways}\n反转的way数量: {reversed_ways}")
+        else:
+            # 处理失败
+            self.status_label.setText("失败")
+            self.log_message.emit(f"方向校正失败: {message}")
+            QMessageBox.warning(self, "校正失败", f"方向校正过程中出现错误: {message}")
