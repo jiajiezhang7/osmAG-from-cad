@@ -37,4 +37,5 @@ __pycache__/
 build/
 bin/
 .idea/
+logs/
 cmake-build-debug/

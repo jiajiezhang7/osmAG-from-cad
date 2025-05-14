@@ -250,6 +250,9 @@ class MergeTab(QWidget):
             QMessageBox.warning(self, "输入错误", "请选择输出文件路径")
             return
         
+        # 确保输出目录存在
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        
         # 获取目标文件列表
         target_files = []
         for i in range(self.target_list.count()):
@@ -260,12 +263,86 @@ class MergeTab(QWidget):
         offset_method = self.offset_method_combo.currentText()
         min_matches = self.min_matches_spin.value()
         
-        # 这里将实现调用合并模块的功能
+        # 禁用开始按钮，启用取消按钮
+        self.start_button.setEnabled(False)
+        self.cancel_button.setEnabled(True)
+        
+        # 重置统计信息
+        self.matched_areas_label.setText("0")
+        self.lat_offset_label.setText("0.0")
+        self.lon_offset_label.setText("0.0")
+        
+        # 更新状态
+        self.status_label.setText("正在处理...")
+        self.total_progress_bar.setValue(0)
+        
+        # 调用合并模块
         self.log_message.emit(f"开始合并OSM文件...\n参照: {ref_path}\n目标: {len(target_files)}个文件\n输出: {output_path}")
-        QMessageBox.information(self, "功能开发中", "OSM合并功能正在开发中...")
+        
+        # 启动处理线程
+        self.merge_module.start_merging(
+            ref_path=ref_path,
+            target_files=target_files,
+            output_path=output_path,
+            area_type=area_type,
+            offset_method=offset_method,
+            min_matches=min_matches,
+            progress_callback=self.update_progress,
+            completion_callback=self.merging_completed
+        )
     
     def cancel_merging(self):
         """取消合并"""
-        # 这里将实现取消合并的功能
-        self.log_message.emit("取消合并")
-        QMessageBox.information(self, "功能开发中", "取消合并功能正在开发中...")
+        # 调用合并模块的取消方法
+        self.merge_module.cancel_merging()
+        
+        # 更新UI状态
+        self.status_label.setText("已取消")
+        self.start_button.setEnabled(True)
+        self.cancel_button.setEnabled(False)
+        
+        # 记录日志
+        self.log_message.emit("OSM合并已取消")
+    
+    def update_progress(self, progress, matched_areas=None, lat_offset=None, lon_offset=None, status=None):
+        """更新进度和状态"""
+        # 更新进度条
+        self.total_progress_bar.setValue(int(progress * 100))
+        
+        # 更新统计信息
+        if matched_areas is not None:
+            self.matched_areas_label.setText(str(matched_areas))
+        
+        if lat_offset is not None:
+            self.lat_offset_label.setText(f"{lat_offset:.6f}")
+        
+        if lon_offset is not None:
+            self.lon_offset_label.setText(f"{lon_offset:.6f}")
+        
+        # 更新状态文本
+        if status is not None:
+            self.status_label.setText(status)
+    
+    def merging_completed(self, success, message, matched_areas=0, lat_offset=0.0, lon_offset=0.0):
+        """合并完成回调"""
+        # 更新UI状态
+        self.start_button.setEnabled(True)
+        self.cancel_button.setEnabled(False)
+        
+        # 更新统计信息
+        self.matched_areas_label.setText(str(matched_areas))
+        self.lat_offset_label.setText(f"{lat_offset:.6f}")
+        self.lon_offset_label.setText(f"{lon_offset:.6f}")
+        
+        if success:
+            # 成功完成
+            self.status_label.setText("完成")
+            self.total_progress_bar.setValue(100)
+            self.log_message.emit(f"OSM合并完成: {message}")
+            QMessageBox.information(self, "合并完成", 
+                                   f"OSM合并已完成。\n\n匹配区域数量: {matched_areas}\n纬度偏移量: {lat_offset:.6f}\n经度偏移量: {lon_offset:.6f}")
+        else:
+            # 处理失败
+            self.status_label.setText("失败")
+            self.log_message.emit(f"OSM合并失败: {message}")
+            QMessageBox.warning(self, "合并失败", f"OSM合并过程中出现错误: {message}")

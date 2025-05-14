@@ -364,12 +364,233 @@ class TextTab(QWidget):
     
     def start_processing(self):
         """开始处理"""
-        # 这里将实现调用文本提取模块的功能
-        self.log_message.emit("开始文本提取处理...")
-        QMessageBox.information(self, "功能开发中", "文本提取功能正在开发中...")
+        # 获取当前选择的模式
+        mode = self.mode_group.checkedId()
+        
+        # 验证共同输入
+        output_path = self.output_path_edit.text().strip()
+        if not output_path:
+            QMessageBox.warning(self, "输入错误", "请选择输出文件路径")
+            return
+        
+        # 确保输出目录存在
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        
+        # 获取通用参数
+        config_path = self.config_path_edit.text().strip() or None
+        layer_name = self.layer_name_edit.text().strip()
+        nearby_threshold = self.nearby_threshold_spin.value()
+        center_distance_ratio = self.center_distance_ratio_spin.value()
+        visualize = self.visualize_check.isChecked()
+        
+        # 获取过滤文本列表
+        filter_text = self.filter_text_edit.toPlainText().strip()
+        filter_text_list = [text.strip() for text in filter_text.split('\n') if text.strip()]
+        
+        # 根据不同模式验证输入并调用相应功能
+        if mode == 1 or mode == 0:  # 完整流程模式
+            # 验证输入
+            dxf_path = self.dxf_path_edit.text().strip()
+            bounds_path = self.bounds_path_edit.text().strip()
+            osm_path = self.osm_path_edit.text().strip()
+            
+            if not dxf_path:
+                QMessageBox.warning(self, "输入错误", "请选择DXF文件")
+                return
+            
+            if not bounds_path:
+                QMessageBox.warning(self, "输入错误", "请选择边界文件")
+                return
+            
+            if not osm_path:
+                QMessageBox.warning(self, "输入错误", "请选择OSM文件")
+                return
+            
+            # 禁用开始按钮，启用取消按钮
+            self.start_button.setEnabled(False)
+            self.cancel_button.setEnabled(True)
+            
+            # 更新状态
+            self.status_label.setText("正在处理...")
+            self.total_progress_bar.setValue(0)
+            self.step_progress_bar.setValue(0)
+            
+            # 调用文本提取模块
+            self.log_message.emit(f"开始完整文本提取流程...\n输入DXF: {dxf_path}\n边界文件: {bounds_path}\n输入OSM: {osm_path}\n输出: {output_path}")
+            
+            # 启动处理线程
+            self.text_module.start_full_process(
+                dxf_path=dxf_path,
+                bounds_path=bounds_path,
+                osm_path=osm_path,
+                output_path=output_path,
+                config_path=config_path,
+                layer_name=layer_name,
+                nearby_threshold=nearby_threshold,
+                center_distance_ratio=center_distance_ratio,
+                filter_text_list=filter_text_list,
+                visualize=visualize,
+                progress_callback=self.update_progress,
+                completion_callback=self.processing_completed
+            )
+        
+        elif mode == 2:  # 仅提取文本模式
+            # 验证输入
+            dxf_path = self.dxf_path_edit.text().strip()
+            
+            if not dxf_path:
+                QMessageBox.warning(self, "输入错误", "请选择DXF文件")
+                return
+            
+            # 禁用开始按钮，启用取消按钮
+            self.start_button.setEnabled(False)
+            self.cancel_button.setEnabled(True)
+            
+            # 更新状态
+            self.status_label.setText("正在处理...")
+            self.total_progress_bar.setValue(0)
+            self.step_progress_bar.setValue(0)
+            
+            # 调用文本提取模块
+            self.log_message.emit(f"开始提取文本...\n输入DXF: {dxf_path}\n输出: {output_path}")
+            
+            # 启动处理线程
+            self.text_module.start_extract_only(
+                dxf_path=dxf_path,
+                output_path=output_path,
+                config_path=config_path,
+                layer_name=layer_name,
+                filter_text_list=filter_text_list,
+                progress_callback=self.update_progress,
+                completion_callback=self.processing_completed
+            )
+        
+        elif mode == 3:  # 仅匹配文本模式
+            # 验证输入
+            bounds_path = self.bounds_path_edit.text().strip()
+            osm_path = self.osm_path_edit.text().strip()
+            text_path = self.text_path_edit.text().strip()
+            
+            if not bounds_path:
+                QMessageBox.warning(self, "输入错误", "请选择边界文件")
+                return
+            
+            if not osm_path:
+                QMessageBox.warning(self, "输入错误", "请选择OSM文件")
+                return
+            
+            if not text_path:
+                QMessageBox.warning(self, "输入错误", "请选择文本文件")
+                return
+            
+            # 禁用开始按钮，启用取消按钮
+            self.start_button.setEnabled(False)
+            self.cancel_button.setEnabled(True)
+            
+            # 更新状态
+            self.status_label.setText("正在处理...")
+            self.total_progress_bar.setValue(0)
+            self.step_progress_bar.setValue(0)
+            
+            # 调用文本提取模块
+            self.log_message.emit(f"开始匹配文本...\n边界文件: {bounds_path}\n输入OSM: {osm_path}\n文本文件: {text_path}\n输出: {output_path}")
+            
+            # 启动处理线程
+            self.text_module.start_match_only(
+                bounds_path=bounds_path,
+                osm_path=osm_path,
+                text_path=text_path,
+                output_path=output_path,
+                config_path=config_path,
+                nearby_threshold=nearby_threshold,
+                center_distance_ratio=center_distance_ratio,
+                filter_text_list=filter_text_list,
+                visualize=visualize,
+                progress_callback=self.update_progress,
+                completion_callback=self.processing_completed
+            )
     
     def cancel_processing(self):
         """取消处理"""
-        # 这里将实现取消处理的功能
-        self.log_message.emit("取消处理")
-        QMessageBox.information(self, "功能开发中", "取消处理功能正在开发中...")
+        # 调用文本提取模块的取消方法
+        self.text_module.cancel_processing()
+        
+        # 更新UI状态
+        self.status_label.setText("已取消")
+        self.start_button.setEnabled(True)
+        self.cancel_button.setEnabled(False)
+        
+        # 记录日志
+        self.log_message.emit("文本提取已取消")
+    
+    def update_progress(self, total_progress, step_progress=None, status=None, preview_image=None):
+        """更新进度和状态"""
+        # 更新总体进度条
+        self.total_progress_bar.setValue(int(total_progress * 100))
+        
+        # 更新当前步骤进度条
+        if step_progress is not None:
+            self.step_progress_bar.setValue(int(step_progress * 100))
+        
+        # 更新状态文本
+        if status is not None:
+            self.status_label.setText(status)
+        
+        # 更新预览图像
+        if preview_image is not None:
+            # 将图像数据转换为QImage
+            if isinstance(preview_image, bytes):
+                qimg = QImage.fromData(preview_image)
+                pixmap = QPixmap.fromImage(qimg)
+                self.preview_label.setPixmap(pixmap.scaled(
+                    self.preview_label.width(), 
+                    self.preview_label.height(),
+                    Qt.KeepAspectRatio,
+                    Qt.SmoothTransformation
+                ))
+            elif isinstance(preview_image, str) and os.path.exists(preview_image):
+                # 如果是文件路径，加载图像
+                pixmap = QPixmap(preview_image)
+                self.preview_label.setPixmap(pixmap.scaled(
+                    self.preview_label.width(), 
+                    self.preview_label.height(),
+                    Qt.KeepAspectRatio,
+                    Qt.SmoothTransformation
+                ))
+            else:
+                # 清除预览
+                self.preview_label.setText("无法显示预览")
+    
+    def processing_completed(self, success, message, result_data=None, preview_image=None):
+        """处理完成回调"""
+        # 更新UI状态
+        self.start_button.setEnabled(True)
+        self.cancel_button.setEnabled(False)
+        
+        if success:
+            # 成功完成
+            self.status_label.setText("完成")
+            self.total_progress_bar.setValue(100)
+            self.step_progress_bar.setValue(100)
+            self.log_message.emit(f"文本提取完成: {message}")
+            
+            # 如果有预览图像，显示预览
+            if preview_image is not None:
+                self.update_progress(1.0, 1.0, "完成", preview_image)
+            
+            # 显示完成消息
+            mode = self.mode_group.checkedId()
+            if mode == 1 or mode == 0:  # 完整流程模式
+                QMessageBox.information(self, "处理完成", 
+                                       f"文本提取并添加到OSM文件已完成。\n\n{message}")
+            elif mode == 2:  # 仅提取文本模式
+                QMessageBox.information(self, "处理完成", 
+                                       f"文本提取已完成。\n\n{message}")
+            elif mode == 3:  # 仅匹配文本模式
+                QMessageBox.information(self, "处理完成", 
+                                       f"文本匹配并添加到OSM文件已完成。\n\n{message}")
+        else:
+            # 处理失败
+            self.status_label.setText("失败")
+            self.log_message.emit(f"文本提取失败: {message}")
+            QMessageBox.warning(self, "处理失败", f"文本提取过程中出现错误: {message}")
