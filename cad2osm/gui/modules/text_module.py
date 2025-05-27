@@ -31,13 +31,13 @@ class TextWorker(QThread):
     process_completed = pyqtSignal(bool, str)  # 处理完成信号
     log_message = pyqtSignal(str)  # 日志消息信号
     visualization_ready = pyqtSignal(str)  # 可视化图像就绪信号
-    
+
     def __init__(self, mode, params):
         super().__init__()
         self.mode = mode  # 'full', 'extract_only', 'match_only'
         self.params = params
         self.is_cancelled = False
-    
+
     def run(self):
         """
         执行文本提取任务
@@ -54,13 +54,13 @@ class TextWorker(QThread):
         except Exception as e:
             self.log_message.emit(f"处理过程中发生错误: {str(e)}")
             self.process_completed.emit(False, f"处理失败: {str(e)}")
-    
+
     def run_full_process(self):
         """
         执行完整的文本提取流程
         """
         self.log_message.emit("开始执行完整文本提取流程...")
-        
+
         # 获取参数
         dxf_path = self.params.get('dxf_path')
         bounds_path = self.params.get('bounds_path')
@@ -72,23 +72,23 @@ class TextWorker(QThread):
         nearby_threshold = self.params.get('nearby_threshold', 50)
         max_center_distance_ratio = self.params.get('max_center_distance_ratio', 0.7)
         filter_text_list = self.params.get('filter_text_list', [])
-        
+
         # 验证必要参数
         if not dxf_path or not bounds_path or not osm_path or not output_path:
             self.process_completed.emit(False, "缺少必要参数")
             return
-        
+
         # 步骤1: 从DXF文件提取文本
         self.log_message.emit("步骤1: 从DXF文件提取文本")
         self.step_progress_updated.emit(0, "提取文本中...")
-        
+
         # 创建临时文件路径
         temp_dir = os.path.dirname(output_path)
         temp_text_path = os.path.join(temp_dir, "temp_text.json")
         temp_text_pixel_path = os.path.join(temp_dir, "temp_text_pixel.json")
         temp_rooms_path = os.path.join(temp_dir, "temp_rooms.json")
         temp_mapping_path = os.path.join(temp_dir, "temp_mapping.json")
-        
+
         # 提取文本
         try:
             text_data = extract_text(dxf_path, temp_text_path, layer_name, config_path)
@@ -97,11 +97,11 @@ class TextWorker(QThread):
         except Exception as e:
             self.process_completed.emit(False, f"文本提取失败: {str(e)}")
             return
-        
+
         # 步骤2: 将DXF文本坐标转换为像素坐标
         self.log_message.emit("步骤2: 将DXF文本坐标转换为像素坐标")
         self.step_progress_updated.emit(25, "转换坐标中...")
-        
+
         # 加载边界数据
         try:
             with open(bounds_path, 'r', encoding='utf-8') as f:
@@ -109,7 +109,7 @@ class TextWorker(QThread):
         except Exception as e:
             self.process_completed.emit(False, f"加载边界数据失败: {str(e)}")
             return
-        
+
         # 转换坐标
         try:
             text_data_pixel = convert_coordinates_step(text_data, bounds_data, temp_text_pixel_path, config_path)
@@ -118,11 +118,11 @@ class TextWorker(QThread):
         except Exception as e:
             self.process_completed.emit(False, f"坐标转换失败: {str(e)}")
             return
-        
+
         # 步骤3: 从OSM文件提取房间多边形
         self.log_message.emit("步骤3: 从OSM文件提取房间多边形")
         self.step_progress_updated.emit(50, "提取房间多边形中...")
-        
+
         # 提取房间多边形
         try:
             rooms_result = extract_rooms_step(osm_path, temp_rooms_path, config_path)
@@ -132,18 +132,18 @@ class TextWorker(QThread):
         except Exception as e:
             self.process_completed.emit(False, f"房间多边形提取失败: {str(e)}")
             return
-        
+
         # 步骤4: 匹配文本到房间
         self.log_message.emit("步骤4: 匹配文本到房间")
         self.step_progress_updated.emit(75, "匹配文本到房间中...")
-        
+
         # 匹配文本到房间
         try:
             mapping_result = match_text_step(
-                text_data_pixel, 
-                rooms_data, 
-                temp_mapping_path, 
-                nearby_threshold, 
+                text_data_pixel,
+                rooms_data,
+                temp_mapping_path,
+                nearby_threshold,
                 max_center_distance_ratio
             )
             self.step_progress_updated.emit(90, "文本匹配完成")
@@ -151,55 +151,55 @@ class TextWorker(QThread):
         except Exception as e:
             self.process_completed.emit(False, f"文本匹配失败: {str(e)}")
             return
-        
+
         # 步骤5: 更新OSM文件
         self.log_message.emit("步骤5: 更新OSM文件")
         self.step_progress_updated.emit(90, "更新OSM文件中...")
-        
+
         # 可视化路径
         visualization_path = None
         if visualize:
             visualization_path = os.path.join(temp_dir, "text_matching_visualization.png")
-        
+
         # 更新OSM文件
         try:
             updated_count = update_osm_step(
-                osm_path, 
-                mapping_result, 
-                output_path, 
-                visualize, 
+                osm_path,
+                mapping_result,
+                output_path,
+                visualize,
                 visualization_path
             )
             self.step_progress_updated.emit(100, "OSM文件更新完成")
             self.log_message.emit(f"更新了 {updated_count} 个房间的文本信息")
-            
+
             # 如果生成了可视化图像，发送信号
             if visualize and visualization_path and os.path.exists(visualization_path):
                 self.visualization_ready.emit(visualization_path)
         except Exception as e:
             self.process_completed.emit(False, f"OSM文件更新失败: {str(e)}")
             return
-        
+
         # 处理完成
         self.process_completed.emit(True, "文本提取和匹配完成")
-    
+
     def run_extract_only(self):
         """
         仅执行文本提取步骤
         """
         self.log_message.emit("开始执行文本提取步骤...")
-        
+
         # 获取参数
         dxf_path = self.params.get('dxf_path')
         output_path = self.params.get('output_path')
         config_path = self.params.get('config_path')
         layer_name = self.params.get('layer_name', 'I—平面—文字')
-        
+
         # 验证必要参数
         if not dxf_path or not output_path:
             self.process_completed.emit(False, "缺少必要参数")
             return
-        
+
         # 提取文本
         try:
             text_data = extract_text(dxf_path, output_path, layer_name, config_path)
@@ -207,13 +207,13 @@ class TextWorker(QThread):
             self.process_completed.emit(True, "文本提取完成")
         except Exception as e:
             self.process_completed.emit(False, f"文本提取失败: {str(e)}")
-    
+
     def run_match_only(self):
         """
         仅执行文本匹配步骤
         """
         self.log_message.emit("开始执行文本匹配步骤...")
-        
+
         # 获取参数
         text_path = self.params.get('text_path')
         bounds_path = self.params.get('bounds_path')
@@ -223,18 +223,18 @@ class TextWorker(QThread):
         visualize = self.params.get('visualize', False)
         nearby_threshold = self.params.get('nearby_threshold', 50)
         max_center_distance_ratio = self.params.get('max_center_distance_ratio', 0.7)
-        
+
         # 验证必要参数
         if not text_path or not bounds_path or not osm_path or not output_path:
             self.process_completed.emit(False, "缺少必要参数")
             return
-        
+
         # 创建临时文件路径
         temp_dir = os.path.dirname(output_path)
         temp_text_pixel_path = os.path.join(temp_dir, "temp_text_pixel.json")
         temp_rooms_path = os.path.join(temp_dir, "temp_rooms.json")
         temp_mapping_path = os.path.join(temp_dir, "temp_mapping.json")
-        
+
         # 加载文本数据
         try:
             with open(text_path, 'r', encoding='utf-8') as f:
@@ -243,7 +243,7 @@ class TextWorker(QThread):
         except Exception as e:
             self.process_completed.emit(False, f"加载文本数据失败: {str(e)}")
             return
-        
+
         # 加载边界数据
         try:
             with open(bounds_path, 'r', encoding='utf-8') as f:
@@ -251,7 +251,7 @@ class TextWorker(QThread):
         except Exception as e:
             self.process_completed.emit(False, f"加载边界数据失败: {str(e)}")
             return
-        
+
         # 转换坐标
         try:
             text_data_pixel = convert_coordinates_step(text_data, bounds_data, temp_text_pixel_path, config_path)
@@ -259,7 +259,7 @@ class TextWorker(QThread):
         except Exception as e:
             self.process_completed.emit(False, f"坐标转换失败: {str(e)}")
             return
-        
+
         # 提取房间多边形
         try:
             rooms_result = extract_rooms_step(osm_path, temp_rooms_path, config_path)
@@ -268,47 +268,47 @@ class TextWorker(QThread):
         except Exception as e:
             self.process_completed.emit(False, f"房间多边形提取失败: {str(e)}")
             return
-        
+
         # 匹配文本到房间
         try:
             mapping_result = match_text_step(
-                text_data_pixel, 
-                rooms_data, 
-                temp_mapping_path, 
-                nearby_threshold, 
+                text_data_pixel,
+                rooms_data,
+                temp_mapping_path,
+                nearby_threshold,
                 max_center_distance_ratio
             )
             self.log_message.emit(f"匹配了 {len(mapping_result['matched_rooms'])} 个房间的文本")
         except Exception as e:
             self.process_completed.emit(False, f"文本匹配失败: {str(e)}")
             return
-        
+
         # 可视化路径
         visualization_path = None
         if visualize:
             visualization_path = os.path.join(temp_dir, "text_matching_visualization.png")
-        
+
         # 更新OSM文件
         try:
             updated_count = update_osm_step(
-                osm_path, 
-                mapping_result, 
-                output_path, 
-                visualize, 
+                osm_path,
+                mapping_result,
+                output_path,
+                visualize,
                 visualization_path
             )
             self.log_message.emit(f"更新了 {updated_count} 个房间的文本信息")
-            
+
             # 如果生成了可视化图像，发送信号
             if visualize and visualization_path and os.path.exists(visualization_path):
                 self.visualization_ready.emit(visualization_path)
         except Exception as e:
             self.process_completed.emit(False, f"OSM文件更新失败: {str(e)}")
             return
-        
+
         # 处理完成
         self.process_completed.emit(True, "文本匹配完成")
-    
+
     def cancel(self):
         """
         取消处理任务
@@ -326,47 +326,116 @@ class TextModule(QObject):
     process_completed = pyqtSignal(bool, str)  # 处理完成信号
     log_message = pyqtSignal(str)  # 日志消息信号
     visualization_ready = pyqtSignal(str)  # 可视化图像就绪信号
-    
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.worker = None
-    
-    def start_full_process(self, params):
+
+    def start_full_process(self, dxf_path, bounds_path, osm_path, output_path,
+                          config_path=None, layer_name='I—平面—文字',
+                          nearby_threshold=50, center_distance_ratio=0.7,
+                          filter_text_list=None, visualize=False,
+                          progress_callback=None, completion_callback=None):
         """
         启动完整文本提取流程
-        
+
         参数:
-            params: 处理参数字典
+            dxf_path: DXF文件路径
+            bounds_path: 边界文件路径
+            osm_path: OSM文件路径
+            output_path: 输出文件路径
+            config_path: 配置文件路径
+            layer_name: 文本图层名称
+            nearby_threshold: 附近匹配阈值
+            center_distance_ratio: 中心偏移比例阈值
+            filter_text_list: 过滤文本列表
+            visualize: 是否生成可视化
+            progress_callback: 进度回调函数
+            completion_callback: 完成回调函数
         """
+        params = {
+            'dxf_path': dxf_path,
+            'bounds_path': bounds_path,
+            'osm_path': osm_path,
+            'output_path': output_path,
+            'config_path': config_path,
+            'layer_name': layer_name,
+            'nearby_threshold': nearby_threshold,
+            'max_center_distance_ratio': center_distance_ratio,
+            'filter_text_list': filter_text_list or [],
+            'visualize': visualize
+        }
+
         # 创建并启动工作线程
         self.worker = TextWorker('full', params)
         self.connect_worker_signals()
         self.worker.start()
-    
-    def start_extract_only(self, params):
+
+    def start_extract_only(self, dxf_path, output_path, config_path=None,
+                          layer_name='I—平面—文字', filter_text_list=None,
+                          progress_callback=None, completion_callback=None):
         """
         启动仅提取文本流程
-        
+
         参数:
-            params: 处理参数字典
+            dxf_path: DXF文件路径
+            output_path: 输出文件路径
+            config_path: 配置文件路径
+            layer_name: 文本图层名称
+            filter_text_list: 过滤文本列表
+            progress_callback: 进度回调函数
+            completion_callback: 完成回调函数
         """
+        params = {
+            'dxf_path': dxf_path,
+            'output_path': output_path,
+            'config_path': config_path,
+            'layer_name': layer_name,
+            'filter_text_list': filter_text_list or []
+        }
+
         # 创建并启动工作线程
         self.worker = TextWorker('extract_only', params)
         self.connect_worker_signals()
         self.worker.start()
-    
-    def start_match_only(self, params):
+
+    def start_match_only(self, bounds_path, osm_path, text_path, output_path,
+                        config_path=None, nearby_threshold=50,
+                        center_distance_ratio=0.7, filter_text_list=None,
+                        visualize=False, progress_callback=None, completion_callback=None):
         """
         启动仅匹配文本流程
-        
+
         参数:
-            params: 处理参数字典
+            bounds_path: 边界文件路径
+            osm_path: OSM文件路径
+            text_path: 文本文件路径
+            output_path: 输出文件路径
+            config_path: 配置文件路径
+            nearby_threshold: 附近匹配阈值
+            center_distance_ratio: 中心偏移比例阈值
+            filter_text_list: 过滤文本列表
+            visualize: 是否生成可视化
+            progress_callback: 进度回调函数
+            completion_callback: 完成回调函数
         """
+        params = {
+            'text_path': text_path,
+            'bounds_path': bounds_path,
+            'osm_path': osm_path,
+            'output_path': output_path,
+            'config_path': config_path,
+            'nearby_threshold': nearby_threshold,
+            'max_center_distance_ratio': center_distance_ratio,
+            'filter_text_list': filter_text_list or [],
+            'visualize': visualize
+        }
+
         # 创建并启动工作线程
         self.worker = TextWorker('match_only', params)
         self.connect_worker_signals()
         self.worker.start()
-    
+
     def connect_worker_signals(self):
         """
         连接工作线程的信号
@@ -377,8 +446,8 @@ class TextModule(QObject):
             self.worker.process_completed.connect(self.process_completed)
             self.worker.log_message.connect(self.log_message)
             self.worker.visualization_ready.connect(self.visualization_ready)
-    
-    def cancel_process(self):
+
+    def cancel_processing(self):
         """
         取消处理任务
         """
