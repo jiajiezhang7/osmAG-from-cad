@@ -15,7 +15,7 @@ from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QLabel, QLineEdit, QFileDialog, QComboBox, QCheckBox,
     QSpinBox, QDoubleSpinBox, QProgressBar, QGroupBox,
-    QFormLayout, QRadioButton, QButtonGroup, QMessageBox,
+    QFormLayout, QGridLayout, QRadioButton, QButtonGroup, QMessageBox,
     QTextEdit, QScrollArea, QSizePolicy
 )
 from PyQt5.QtCore import Qt, pyqtSignal, QThread, QSettings
@@ -81,9 +81,12 @@ class TextTab(QWidget):
 
         # 创建输入区域
         self.input_group = QGroupBox(tr("ui.input_settings"))
-        input_layout = QFormLayout()
+        input_layout = QGridLayout()
+        input_layout.setSpacing(10)  # 设置间距
 
+        # 第一行：DXF文件选择 和 边界文件选择
         # DXF文件选择
+        self.dxf_label = QLabel(tr("files.dxf_file") + ":")
         self.dxf_path_edit = QLineEdit()
         self.browse_dxf_btn = QPushButton(tr("buttons.browse_ellipsis"))
         self.browse_dxf_btn.clicked.connect(self.browse_dxf)
@@ -91,10 +94,12 @@ class TextTab(QWidget):
         dxf_path_layout = QHBoxLayout()
         dxf_path_layout.addWidget(self.dxf_path_edit)
         dxf_path_layout.addWidget(self.browse_dxf_btn)
-        self.dxf_label = QLabel(tr("files.dxf_file") + ":")
-        input_layout.addRow(self.dxf_label, dxf_path_layout)
+
+        input_layout.addWidget(self.dxf_label, 0, 0)
+        input_layout.addLayout(dxf_path_layout, 0, 1)
 
         # 边界文件选择
+        self.bounds_label = QLabel(tr("files.bounds_file") + ":")
         self.bounds_path_edit = QLineEdit()
         self.browse_bounds_btn = QPushButton(tr("buttons.browse_ellipsis"))
         self.browse_bounds_btn.clicked.connect(self.browse_bounds)
@@ -102,10 +107,13 @@ class TextTab(QWidget):
         bounds_path_layout = QHBoxLayout()
         bounds_path_layout.addWidget(self.bounds_path_edit)
         bounds_path_layout.addWidget(self.browse_bounds_btn)
-        self.bounds_label = QLabel(tr("files.bounds_file") + ":")
-        input_layout.addRow(self.bounds_label, bounds_path_layout)
 
+        input_layout.addWidget(self.bounds_label, 0, 2)
+        input_layout.addLayout(bounds_path_layout, 0, 3)
+
+        # 第二行：OSM文件选择 和 文本文件选择
         # OSM文件选择
+        self.osm_label = QLabel(tr("files.osm_file") + ":")
         self.osm_path_edit = QLineEdit()
         self.browse_osm_btn = QPushButton(tr("buttons.browse_ellipsis"))
         self.browse_osm_btn.clicked.connect(self.browse_osm)
@@ -113,10 +121,12 @@ class TextTab(QWidget):
         osm_path_layout = QHBoxLayout()
         osm_path_layout.addWidget(self.osm_path_edit)
         osm_path_layout.addWidget(self.browse_osm_btn)
-        self.osm_label = QLabel(tr("files.osm_file") + ":")
-        input_layout.addRow(self.osm_label, osm_path_layout)
+
+        input_layout.addWidget(self.osm_label, 1, 0)
+        input_layout.addLayout(osm_path_layout, 1, 1)
 
         # 文本文件选择（仅匹配模式使用）
+        self.text_label = QLabel(tr("files.text_file") + ":")
         self.text_path_edit = QLineEdit()
         self.browse_text_btn = QPushButton(tr("buttons.browse_ellipsis"))
         self.browse_text_btn.clicked.connect(self.browse_text)
@@ -124,10 +134,13 @@ class TextTab(QWidget):
         text_path_layout = QHBoxLayout()
         text_path_layout.addWidget(self.text_path_edit)
         text_path_layout.addWidget(self.browse_text_btn)
-        self.text_label = QLabel(tr("files.text_file") + ":")
-        input_layout.addRow(self.text_label, text_path_layout)
 
+        input_layout.addWidget(self.text_label, 1, 2)
+        input_layout.addLayout(text_path_layout, 1, 3)
+
+        # 第三行：输出文件路径 和 配置文件选择
         # 输出文件路径
+        self.output_label = QLabel(tr("files.output_file") + ":")
         self.output_path_edit = QLineEdit()
         self.browse_output_btn = QPushButton(tr("buttons.browse_ellipsis"))
         self.browse_output_btn.clicked.connect(self.browse_output)
@@ -135,10 +148,12 @@ class TextTab(QWidget):
         output_path_layout = QHBoxLayout()
         output_path_layout.addWidget(self.output_path_edit)
         output_path_layout.addWidget(self.browse_output_btn)
-        self.output_label = QLabel(tr("files.output_file") + ":")
-        input_layout.addRow(self.output_label, output_path_layout)
+
+        input_layout.addWidget(self.output_label, 2, 0)
+        input_layout.addLayout(output_path_layout, 2, 1)
 
         # 配置文件选择
+        self.config_label = QLabel(tr("files.config_file_optional") + ":")
         self.config_path_edit = QLineEdit()
         self.browse_config_btn = QPushButton(tr("buttons.browse_ellipsis"))
         self.browse_config_btn.clicked.connect(self.browse_config)
@@ -146,8 +161,13 @@ class TextTab(QWidget):
         config_path_layout = QHBoxLayout()
         config_path_layout.addWidget(self.config_path_edit)
         config_path_layout.addWidget(self.browse_config_btn)
-        self.config_label = QLabel(tr("files.config_file_optional") + ":")
-        input_layout.addRow(self.config_label, config_path_layout)
+
+        input_layout.addWidget(self.config_label, 2, 2)
+        input_layout.addLayout(config_path_layout, 2, 3)
+
+        # 设置列的拉伸比例，使输入框能够合理分配空间
+        input_layout.setColumnStretch(1, 1)  # 第一列输入框
+        input_layout.setColumnStretch(3, 1)  # 第二列输入框
 
         self.input_group.setLayout(input_layout)
         main_layout.addWidget(self.input_group)
