@@ -6,6 +6,9 @@ projects: {}
 # 当前项目
 current_project: null
 
+# 语言设置
+language: "zh_CN"  # 默认中文，可选: zh_CN, en_US
+
 # 默认设置
 default_settings:
   # CAD预处理设置
@@ -13,7 +16,7 @@ default_settings:
     resolution: 4000
     padding_ratio: 3.0
     line_thickness: 1
-  
+
   # 文本提取设置
   text:
     layer_name: "I—平面—文字"
@@ -26,7 +29,7 @@ default_settings:
       - "楼梯"
       - "走廊"
       - "管道井"
-  
+
   # OSM合并设置
   merge:
     area_type: "两者"

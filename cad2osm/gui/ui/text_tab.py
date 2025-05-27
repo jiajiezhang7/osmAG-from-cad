@@ -24,6 +24,9 @@ from PyQt5.QtGui import QPixmap, QImage
 # 导入文本提取模块
 from modules.text_module import TextModule
 
+# 导入语言管理器
+from utils.language_manager import tr
+
 class TextTab(QWidget):
     """
     文本提取标签页，用于从DXF文件提取文本并添加到OSM文件
@@ -55,13 +58,13 @@ class TextTab(QWidget):
         main_layout = QVBoxLayout(self)
 
         # 创建模式选择区域
-        mode_group = QGroupBox("处理模式")
+        self.mode_group_box = QGroupBox(tr("ui.processing_mode"))
         mode_layout = QHBoxLayout()
 
         self.mode_group = QButtonGroup(self)
-        self.full_mode_radio = QRadioButton("完整流程")
-        self.extract_only_radio = QRadioButton("仅提取文本")
-        self.match_only_radio = QRadioButton("仅匹配文本")
+        self.full_mode_radio = QRadioButton(tr("modes.full_process"))
+        self.extract_only_radio = QRadioButton(tr("modes.extract_only"))
+        self.match_only_radio = QRadioButton(tr("modes.match_only"))
 
         self.mode_group.addButton(self.full_mode_radio, 1)
         self.mode_group.addButton(self.extract_only_radio, 2)
@@ -73,139 +76,151 @@ class TextTab(QWidget):
         mode_layout.addWidget(self.extract_only_radio)
         mode_layout.addWidget(self.match_only_radio)
 
-        mode_group.setLayout(mode_layout)
-        main_layout.addWidget(mode_group)
+        self.mode_group_box.setLayout(mode_layout)
+        main_layout.addWidget(self.mode_group_box)
 
         # 创建输入区域
-        input_group = QGroupBox("输入设置")
+        self.input_group = QGroupBox(tr("ui.input_settings"))
         input_layout = QFormLayout()
 
         # DXF文件选择
         self.dxf_path_edit = QLineEdit()
-        self.browse_dxf_btn = QPushButton("浏览...")
+        self.browse_dxf_btn = QPushButton(tr("buttons.browse_ellipsis"))
         self.browse_dxf_btn.clicked.connect(self.browse_dxf)
 
         dxf_path_layout = QHBoxLayout()
         dxf_path_layout.addWidget(self.dxf_path_edit)
         dxf_path_layout.addWidget(self.browse_dxf_btn)
-        input_layout.addRow("DXF文件:", dxf_path_layout)
+        self.dxf_label = QLabel(tr("files.dxf_file") + ":")
+        input_layout.addRow(self.dxf_label, dxf_path_layout)
 
         # 边界文件选择
         self.bounds_path_edit = QLineEdit()
-        self.browse_bounds_btn = QPushButton("浏览...")
+        self.browse_bounds_btn = QPushButton(tr("buttons.browse_ellipsis"))
         self.browse_bounds_btn.clicked.connect(self.browse_bounds)
 
         bounds_path_layout = QHBoxLayout()
         bounds_path_layout.addWidget(self.bounds_path_edit)
         bounds_path_layout.addWidget(self.browse_bounds_btn)
-        input_layout.addRow("边界文件:", bounds_path_layout)
+        self.bounds_label = QLabel(tr("files.bounds_file") + ":")
+        input_layout.addRow(self.bounds_label, bounds_path_layout)
 
         # OSM文件选择
         self.osm_path_edit = QLineEdit()
-        self.browse_osm_btn = QPushButton("浏览...")
+        self.browse_osm_btn = QPushButton(tr("buttons.browse_ellipsis"))
         self.browse_osm_btn.clicked.connect(self.browse_osm)
 
         osm_path_layout = QHBoxLayout()
         osm_path_layout.addWidget(self.osm_path_edit)
         osm_path_layout.addWidget(self.browse_osm_btn)
-        input_layout.addRow("OSM文件:", osm_path_layout)
+        self.osm_label = QLabel(tr("files.osm_file") + ":")
+        input_layout.addRow(self.osm_label, osm_path_layout)
 
         # 文本文件选择（仅匹配模式使用）
         self.text_path_edit = QLineEdit()
-        self.browse_text_btn = QPushButton("浏览...")
+        self.browse_text_btn = QPushButton(tr("buttons.browse_ellipsis"))
         self.browse_text_btn.clicked.connect(self.browse_text)
 
         text_path_layout = QHBoxLayout()
         text_path_layout.addWidget(self.text_path_edit)
         text_path_layout.addWidget(self.browse_text_btn)
-        input_layout.addRow("文本文件:", text_path_layout)
+        self.text_label = QLabel(tr("files.text_file") + ":")
+        input_layout.addRow(self.text_label, text_path_layout)
 
         # 输出文件路径
         self.output_path_edit = QLineEdit()
-        self.browse_output_btn = QPushButton("浏览...")
+        self.browse_output_btn = QPushButton(tr("buttons.browse_ellipsis"))
         self.browse_output_btn.clicked.connect(self.browse_output)
 
         output_path_layout = QHBoxLayout()
         output_path_layout.addWidget(self.output_path_edit)
         output_path_layout.addWidget(self.browse_output_btn)
-        input_layout.addRow("输出文件:", output_path_layout)
+        self.output_label = QLabel(tr("files.output_file") + ":")
+        input_layout.addRow(self.output_label, output_path_layout)
 
         # 配置文件选择
         self.config_path_edit = QLineEdit()
-        self.browse_config_btn = QPushButton("浏览...")
+        self.browse_config_btn = QPushButton(tr("buttons.browse_ellipsis"))
         self.browse_config_btn.clicked.connect(self.browse_config)
 
         config_path_layout = QHBoxLayout()
         config_path_layout.addWidget(self.config_path_edit)
         config_path_layout.addWidget(self.browse_config_btn)
-        input_layout.addRow("配置文件(可选):", config_path_layout)
+        self.config_label = QLabel(tr("files.config_file_optional") + ":")
+        input_layout.addRow(self.config_label, config_path_layout)
 
-        input_group.setLayout(input_layout)
-        main_layout.addWidget(input_group)
+        self.input_group.setLayout(input_layout)
+        main_layout.addWidget(self.input_group)
 
         # 创建参数设置区域
-        params_group = QGroupBox("参数设置")
+        self.params_group = QGroupBox(tr("ui.parameter_settings"))
         params_layout = QFormLayout()
 
         # 文本图层名称
         self.layer_name_edit = QLineEdit("——平面——文字")
-        params_layout.addRow("文本图层名称:", self.layer_name_edit)
+        self.layer_name_label = QLabel(tr("params.layer_name") + ":")
+        params_layout.addRow(self.layer_name_label, self.layer_name_edit)
 
         # 附近匹配偏移阈值
         self.nearby_threshold_spin = QSpinBox()
         self.nearby_threshold_spin.setRange(1, 500)
         self.nearby_threshold_spin.setValue(50)
-        params_layout.addRow("附近匹配偏移阈值:", self.nearby_threshold_spin)
+        self.nearby_threshold_label = QLabel(tr("params.nearby_threshold") + ":")
+        params_layout.addRow(self.nearby_threshold_label, self.nearby_threshold_spin)
 
         # 中心偏移比例阈值
         self.center_distance_ratio_spin = QDoubleSpinBox()
         self.center_distance_ratio_spin.setRange(0.1, 1.0)
         self.center_distance_ratio_spin.setValue(0.7)
         self.center_distance_ratio_spin.setSingleStep(0.1)
-        params_layout.addRow("中心偏移比例阈值:", self.center_distance_ratio_spin)
+        self.center_distance_ratio_label = QLabel(tr("params.center_distance_ratio") + ":")
+        params_layout.addRow(self.center_distance_ratio_label, self.center_distance_ratio_spin)
 
         # 可视化选项
-        self.visualize_check = QCheckBox("生成可视化图像")
+        self.visualize_check = QCheckBox(tr("params.visualize"))
         params_layout.addRow("", self.visualize_check)
 
-        params_group.setLayout(params_layout)
-        main_layout.addWidget(params_group)
+        self.params_group.setLayout(params_layout)
+        main_layout.addWidget(self.params_group)
 
         # 创建文本过滤区域
-        filter_group = QGroupBox("文本过滤设置")
+        self.filter_group = QGroupBox(tr("ui.filter_settings"))
         filter_layout = QVBoxLayout()
 
-        filter_layout.addWidget(QLabel("要过滤的文本列表（每行一个）："))
+        self.filter_description_label = QLabel(tr("rules.filter_text_description"))
+        filter_layout.addWidget(self.filter_description_label)
         self.filter_text_edit = QTextEdit()
-        self.filter_text_edit.setPlaceholderText("输入要过滤的文本，每行一个。例如：\n卫生间\n电梯\n楼梯")
+        self.filter_text_edit.setPlaceholderText(tr("hints.filter_text_placeholder"))
         filter_layout.addWidget(self.filter_text_edit)
 
-        filter_group.setLayout(filter_layout)
-        main_layout.addWidget(filter_group)
+        self.filter_group.setLayout(filter_layout)
+        main_layout.addWidget(self.filter_group)
 
         # 创建进度显示区域
-        progress_group = QGroupBox("进度")
+        self.progress_group = QGroupBox(tr("ui.progress_display"))
         progress_layout = QVBoxLayout()
 
         # 总体进度条
-        progress_layout.addWidget(QLabel("总体进度:"))
+        self.overall_progress_label = QLabel(tr("progress.overall") + ":")
+        progress_layout.addWidget(self.overall_progress_label)
         self.total_progress_bar = QProgressBar()
         progress_layout.addWidget(self.total_progress_bar)
 
         # 当前步骤进度条
-        progress_layout.addWidget(QLabel("当前步骤:"))
+        self.current_step_label = QLabel(tr("progress.current_step") + ":")
+        progress_layout.addWidget(self.current_step_label)
         self.step_progress_bar = QProgressBar()
         progress_layout.addWidget(self.step_progress_bar)
 
         # 处理状态文本
-        self.status_label = QLabel("就绪")
+        self.status_label = QLabel(tr("status.ready"))
         progress_layout.addWidget(self.status_label)
 
-        progress_group.setLayout(progress_layout)
-        main_layout.addWidget(progress_group)
+        self.progress_group.setLayout(progress_layout)
+        main_layout.addWidget(self.progress_group)
 
         # 创建结果预览区域
-        preview_group = QGroupBox("结果预览")
+        self.preview_group = QGroupBox(tr("ui.result_preview"))
         preview_layout = QVBoxLayout()
 
         self.preview_label = QLabel()
@@ -213,7 +228,7 @@ class TextTab(QWidget):
         self.preview_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.preview_label.setMinimumHeight(200)
         self.preview_label.setStyleSheet("background-color: white; border: 1px solid #cccccc;")
-        self.preview_label.setText("匹配结果预览将在这里显示")
+        self.preview_label.setText(tr("hints.preview_placeholder"))
 
         # 创建滚动区域
         scroll_area = QScrollArea()
@@ -222,16 +237,16 @@ class TextTab(QWidget):
 
         preview_layout.addWidget(scroll_area)
 
-        preview_group.setLayout(preview_layout)
-        main_layout.addWidget(preview_group)
+        self.preview_group.setLayout(preview_layout)
+        main_layout.addWidget(self.preview_group)
 
         # 创建按钮区域
         button_layout = QHBoxLayout()
 
-        self.start_button = QPushButton("开始处理")
+        self.start_button = QPushButton(tr("buttons.start_processing"))
         self.start_button.clicked.connect(self.start_processing)
 
-        self.cancel_button = QPushButton("取消")
+        self.cancel_button = QPushButton(tr("buttons.cancel"))
         self.cancel_button.clicked.connect(self.cancel_processing)
         self.cancel_button.setEnabled(False)
 
@@ -635,3 +650,52 @@ class TextTab(QWidget):
             self.status_label.setText("失败")
             self.log_message.emit(f"文本提取失败: {message}")
             QMessageBox.warning(self, "处理失败", f"文本提取过程中出现错误:\n\n{message}")
+
+    def on_language_changed(self):
+        """响应语言切换事件"""
+        # 更新组框标题
+        self.mode_group_box.setTitle(tr("ui.processing_mode"))
+        self.input_group.setTitle(tr("ui.input_settings"))
+        self.params_group.setTitle(tr("ui.parameter_settings"))
+        self.filter_group.setTitle(tr("ui.filter_settings"))
+        self.progress_group.setTitle(tr("ui.progress_display"))
+        self.preview_group.setTitle(tr("ui.result_preview"))
+
+        # 更新模式选择按钮
+        self.full_mode_radio.setText(tr("modes.full_process"))
+        self.extract_only_radio.setText(tr("modes.extract_only"))
+        self.match_only_radio.setText(tr("modes.match_only"))
+
+        # 更新文件标签
+        self.dxf_label.setText(tr("files.dxf_file") + ":")
+        self.bounds_label.setText(tr("files.bounds_file") + ":")
+        self.osm_label.setText(tr("files.osm_file") + ":")
+        self.text_label.setText(tr("files.text_file") + ":")
+        self.output_label.setText(tr("files.output_file") + ":")
+        self.config_label.setText(tr("files.config_file_optional") + ":")
+
+        # 更新参数标签
+        self.layer_name_label.setText(tr("params.layer_name") + ":")
+        self.nearby_threshold_label.setText(tr("params.nearby_threshold") + ":")
+        self.center_distance_ratio_label.setText(tr("params.center_distance_ratio") + ":")
+        self.visualize_check.setText(tr("params.visualize"))
+
+        # 更新进度标签
+        self.overall_progress_label.setText(tr("progress.overall") + ":")
+        self.current_step_label.setText(tr("progress.current_step") + ":")
+        self.status_label.setText(tr("status.ready"))
+
+        # 更新按钮文本
+        self.browse_dxf_btn.setText(tr("buttons.browse_ellipsis"))
+        self.browse_bounds_btn.setText(tr("buttons.browse_ellipsis"))
+        self.browse_osm_btn.setText(tr("buttons.browse_ellipsis"))
+        self.browse_text_btn.setText(tr("buttons.browse_ellipsis"))
+        self.browse_output_btn.setText(tr("buttons.browse_ellipsis"))
+        self.browse_config_btn.setText(tr("buttons.browse_ellipsis"))
+        self.start_button.setText(tr("buttons.start_processing"))
+        self.cancel_button.setText(tr("buttons.cancel"))
+
+        # 更新其他文本
+        self.filter_description_label.setText(tr("rules.filter_text_description"))
+        self.filter_text_edit.setPlaceholderText(tr("hints.filter_text_placeholder"))
+        self.preview_label.setText(tr("hints.preview_placeholder"))

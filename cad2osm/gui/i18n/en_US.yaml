@@ -1,0 +1,252 @@
+# English Language Pack
+app:
+  title: "CAD2OSM GUI Application"
+  ready: "Ready"
+
+menu:
+  file: "File"
+  new_project: "New Project"
+  open_project: "Open Project"
+  exit: "Exit"
+  help: "Help"
+  about: "About"
+  language: "Language"
+  chinese: "中文"
+  english: "English"
+
+tabs:
+  process: "CAD Processing"
+  text: "Text Extraction"
+  merge: "OSM Merge"
+  direction: "Direction Correction"
+  full_process: "Full Process (DWG -> PNG)"
+  semi_process: "Semi-Auto Process (DXF -> PNG)"
+
+project:
+  selection: "Project Selection"
+  select_project: "Select Project:"
+  refresh: "Refresh"
+
+buttons:
+  browse: "Browse"
+  start: "Start Processing"
+  stop: "Stop"
+  reset: "Reset"
+  apply: "Apply"
+  cancel: "Cancel"
+  ok: "OK"
+
+status:
+  processing: "Processing..."
+  completed: "Completed"
+  failed: "Failed"
+  stopped: "Stopped"
+  ready: "Ready"
+
+messages:
+  feature_in_development: "Feature Under Development"
+  new_project_developing: "New project feature is under development..."
+  open_project_developing: "Open project feature is under development..."
+  language_switched: "Language Switched"
+  language_switch_success: "Language switched successfully"
+
+about:
+  title: "About CAD2OSM"
+  version: "Version: 1.0.0"
+  description: "This is a GUI tool for CAD to OSM conversion with the following features:"
+  features:
+    - "CAD Processing: DWG to PNG conversion"
+    - "Text Extraction: Extract text from DXF and add to OSM"
+    - "OSM Merge: Merge multiple OSM files"
+    - "Direction Correction: Correct polygon directions in OSM"
+  copyright: "© 2025 AGSeg Team"
+
+process:
+  input_file: "Input File"
+  output_directory: "Output Directory"
+  settings: "Settings"
+  resolution: "Resolution"
+  padding_ratio: "Padding Ratio"
+  line_thickness: "Line Thickness"
+  progress: "Progress"
+  step_progress: "Step Progress"
+
+text:
+  layer_name: "Layer Name"
+  nearby_threshold: "Nearby Threshold"
+  max_center_distance_ratio: "Max Center Distance Ratio"
+  visualize: "Visualize"
+  filter_text_list: "Filter Text List"
+
+merge:
+  area_type: "Area Type"
+  offset_method: "Offset Method"
+  min_matches: "Min Matches"
+  both: "Both"
+  vertex_average: "Vertex Average"
+
+direction:
+  correction_method: "Correction Method"
+  auto_detect: "Auto Detect"
+  manual_select: "Manual Select"
+
+errors:
+  file_not_found: "File not found"
+  invalid_format: "Invalid format"
+  processing_error: "Processing error"
+  permission_denied: "Permission denied"
+
+# Common UI Components
+ui:
+  input_settings: "Input Settings"
+  parameter_settings: "Parameter Settings"
+  step_control: "Step Control"
+  progress_display: "Progress Display"
+  result_statistics: "Result Statistics"
+  result_preview: "Result Preview"
+  processing_mode: "Processing Mode"
+  rules_description: "Rules Description"
+  filter_settings: "Filter Settings"
+
+# File Related
+files:
+  dxf_file: "DXF File"
+  osm_file: "OSM File"
+  bounds_file: "Bounds File"
+  text_file: "Text File"
+  output_file: "Output File"
+  config_file: "Config File"
+  config_file_optional: "Config File (Optional)"
+  reference_osm: "Reference OSM File"
+  target_osm: "Target OSM File"
+
+# Processing Modes
+modes:
+  full_process: "Full Process"
+  extract_only: "Extract Only"
+  match_only: "Match Only"
+
+# Parameter Names
+params:
+  layer_name: "Text Layer Name"
+  nearby_threshold: "Nearby Matching Threshold"
+  center_distance_ratio: "Center Distance Ratio Threshold"
+  visualize: "Generate Visualization"
+  area_type: "Matching Area Type"
+  offset_method: "Offset Calculation Method"
+  min_matches: "Minimum Matching Areas"
+
+# Statistics
+stats:
+  matched_areas: "Matched Areas"
+  lat_offset: "Latitude Offset"
+  lon_offset: "Longitude Offset"
+  processed_ways: "Processed Ways"
+  reversed_ways: "Reversed Ways"
+
+# Progress Related
+progress:
+  overall: "Overall Progress"
+  current_step: "Current Step"
+
+# Button Text
+buttons:
+  browse: "Browse"
+  browse_ellipsis: "Browse..."
+  start_processing: "Start Processing"
+  start_merging: "Start Merging"
+  start_correction: "Start Correction"
+  cancel: "Cancel"
+  add: "Add"
+  remove: "Remove"
+  clear: "Clear"
+
+# Option Values
+options:
+  elevator: "Elevator"
+  stairs: "Stairs"
+  both: "Both"
+  centroid: "Centroid"
+  vertex_average: "Vertex Average"
+
+# Hints
+hints:
+  filter_text_placeholder: "Enter text to filter, one per line. For example:\nRestroom\nElevator\nStairs"
+  preview_placeholder: "Matching result preview will be displayed here"
+
+# Rules Description
+rules:
+  direction_correction: "Direction Correction Rules:\n\n1. Room polygons should be counter-clockwise\n2. Structure polygons should be clockwise\n\nThe correction process will automatically detect polygon direction and reverse node order as needed."
+  filter_text_description: "Text filter list (one per line):"
+
+# Sub-tabs Related
+sub_tabs:
+  processing_mode: "Processing Mode"
+  input_path: "Input Path"
+  output_directory: "Output Directory"
+  output_root_directory: "Output Root Directory"
+  single_file: "Single File"
+  batch_directory: "Batch Directory"
+  browse_file: "Browse File..."
+  browse_directory: "Browse Directory..."
+  target_png_resolution: "Target PNG Resolution"
+  edge_padding_ratio: "Edge Padding Ratio"
+  line_thickness: "Line Thickness"
+  skip_steps: "Skip Steps"
+  skip_dwg_to_dxf: "Skip DWG→DXF"
+  skip_dxf_filter: "Skip DXF Filter"
+  skip_dxf_to_svg: "Skip DXF→SVG"
+  skip_svg_to_png: "Skip SVG→PNG"
+
+# File Dialogs
+dialogs:
+  select_dwg_file: "Select DWG File"
+  select_dxf_file: "Select Filtered DXF File"
+  select_directory_with_dwg: "Select Directory Containing DWG Files"
+  select_directory_with_dxf: "Select Directory Containing Filtered DXF Files"
+  select_output_directory: "Select Output Directory"
+  select_output_root_directory: "Select Output Root Directory (img subdirectories will be created)"
+  select_config_file: "Select Config File"
+  dwg_files: "DWG Files (*.dwg)"
+  dxf_files: "DXF Files (*.dxf)"
+  yaml_files: "YAML Files (*.yaml *.yml)"
+
+# Status Messages
+status_messages:
+  processing: "Processing..."
+  processing_with_detail: "Processing: {0}"
+  processing_file: "Processing File"
+  completed: "Completed"
+  failed: "Failed"
+  cancelled: "Cancelled"
+  ready: "Ready"
+
+# Notes and Descriptions
+notes:
+  output_subdirs: "Note: img/png_manual_filter and img/svg_manual_filter subdirectories will be created automatically in the output root directory"
+
+# Error Messages
+error_messages:
+  input_error: "Input Error"
+  select_input_file_or_directory: "Please select input file or directory"
+  select_output_directory: "Please select output directory"
+  processing_failed: "Processing Failed"
+  processing_completed: "Processing Completed"
+
+# Log Messages
+log_messages:
+  start_full_batch_process: "Starting batch full process..."
+  start_full_single_process: "Starting single file full process..."
+  start_semi_batch_process: "Starting batch semi-auto process..."
+  start_semi_single_process: "Starting single file semi-auto process..."
+  input_directory: "Input Directory"
+  input_file: "Input File"
+  output_directory: "Output Directory"
+  output_root_directory: "Output Root Directory"
+  will_create: "Will Create"
+  full_process_completed: "Full process completed"
+  full_process_failed: "Full process failed"
+  full_process_cancelled: "Full process cancelled"
+  semi_process_completed: "Semi-auto process completed"
+  semi_process_failed: "Semi-auto process failed"
+  semi_process_cancelled: "Semi-auto process cancelled"
