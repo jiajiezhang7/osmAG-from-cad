@@ -19,6 +19,9 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt, pyqtSignal, QThread, QSettings
 
+# 导入语言管理器
+from utils.language_manager import tr
+
 class FullProcessTab(QWidget):
     """
     CAD预处理完整流程子标签页，处理从DWG到PNG的完整转换流程
@@ -45,13 +48,13 @@ class FullProcessTab(QWidget):
         main_layout = QVBoxLayout(self)
 
         # 创建输入区域
-        input_group = QGroupBox("输入设置")
+        self.input_group = QGroupBox(tr("ui.input_settings"))
         input_layout = QFormLayout()
 
         # DWG文件选择
         self.input_mode_group = QButtonGroup(self)
-        self.single_file_radio = QRadioButton("单个文件")
-        self.batch_dir_radio = QRadioButton("批量处理目录")
+        self.single_file_radio = QRadioButton(tr("sub_tabs.single_file"))
+        self.batch_dir_radio = QRadioButton(tr("sub_tabs.batch_directory"))
         self.input_mode_group.addButton(self.single_file_radio, 1)
         self.input_mode_group.addButton(self.batch_dir_radio, 2)
         self.single_file_radio.setChecked(True)
@@ -59,43 +62,47 @@ class FullProcessTab(QWidget):
         input_mode_layout = QHBoxLayout()
         input_mode_layout.addWidget(self.single_file_radio)
         input_mode_layout.addWidget(self.batch_dir_radio)
-        input_layout.addRow("处理模式:", input_mode_layout)
+        self.processing_mode_label = QLabel(tr("sub_tabs.processing_mode") + ":")
+        input_layout.addRow(self.processing_mode_label, input_mode_layout)
 
         # 输入文件/目录选择
         self.input_path_edit = QLineEdit()
-        self.browse_input_btn = QPushButton("浏览...")
+        self.browse_input_btn = QPushButton(tr("buttons.browse_ellipsis"))
         self.browse_input_btn.clicked.connect(self.browse_input)
 
         input_path_layout = QHBoxLayout()
         input_path_layout.addWidget(self.input_path_edit)
         input_path_layout.addWidget(self.browse_input_btn)
-        input_layout.addRow("输入路径:", input_path_layout)
+        self.input_path_label = QLabel(tr("sub_tabs.input_path") + ":")
+        input_layout.addRow(self.input_path_label, input_path_layout)
 
         # 输出目录选择
         self.output_dir_edit = QLineEdit()
-        self.browse_output_btn = QPushButton("浏览...")
+        self.browse_output_btn = QPushButton(tr("buttons.browse_ellipsis"))
         self.browse_output_btn.clicked.connect(self.browse_output)
 
         output_dir_layout = QHBoxLayout()
         output_dir_layout.addWidget(self.output_dir_edit)
         output_dir_layout.addWidget(self.browse_output_btn)
-        input_layout.addRow("输出目录:", output_dir_layout)
+        self.output_dir_label = QLabel(tr("sub_tabs.output_directory") + ":")
+        input_layout.addRow(self.output_dir_label, output_dir_layout)
 
         # 配置文件选择
         self.config_path_edit = QLineEdit()
-        self.browse_config_btn = QPushButton("浏览...")
+        self.browse_config_btn = QPushButton(tr("buttons.browse_ellipsis"))
         self.browse_config_btn.clicked.connect(self.browse_config)
 
         config_path_layout = QHBoxLayout()
         config_path_layout.addWidget(self.config_path_edit)
         config_path_layout.addWidget(self.browse_config_btn)
-        input_layout.addRow("配置文件(可选):", config_path_layout)
+        self.config_path_label = QLabel(tr("files.config_file_optional") + ":")
+        input_layout.addRow(self.config_path_label, config_path_layout)
 
-        input_group.setLayout(input_layout)
-        main_layout.addWidget(input_group)
+        self.input_group.setLayout(input_layout)
+        main_layout.addWidget(self.input_group)
 
         # 创建参数设置区域
-        params_group = QGroupBox("参数设置")
+        self.params_group = QGroupBox(tr("ui.parameter_settings"))
         params_layout = QFormLayout()
 
         # 目标PNG分辨率设置
@@ -103,7 +110,8 @@ class FullProcessTab(QWidget):
         self.resolution_spin.setRange(1000, 10000)
         self.resolution_spin.setValue(4000)
         self.resolution_spin.setSingleStep(100)
-        params_layout.addRow("目标PNG分辨率:", self.resolution_spin)
+        self.resolution_label = QLabel(tr("sub_tabs.target_png_resolution") + ":")
+        params_layout.addRow(self.resolution_label, self.resolution_spin)
 
         # 边缘空隙比例设置
         self.padding_spin = QDoubleSpinBox()
@@ -111,63 +119,67 @@ class FullProcessTab(QWidget):
         self.padding_spin.setValue(3.0)
         self.padding_spin.setSingleStep(0.1)
         self.padding_spin.setSuffix("%")
-        params_layout.addRow("边缘空隙比例:", self.padding_spin)
+        self.padding_label = QLabel(tr("sub_tabs.edge_padding_ratio") + ":")
+        params_layout.addRow(self.padding_label, self.padding_spin)
 
         # 线条粗细设置
         self.line_thickness_spin = QSpinBox()
         self.line_thickness_spin.setRange(1, 10)
         self.line_thickness_spin.setValue(1)
-        params_layout.addRow("线条粗细:", self.line_thickness_spin)
+        self.line_thickness_label = QLabel(tr("sub_tabs.line_thickness") + ":")
+        params_layout.addRow(self.line_thickness_label, self.line_thickness_spin)
 
-        params_group.setLayout(params_layout)
-        main_layout.addWidget(params_group)
+        self.params_group.setLayout(params_layout)
+        main_layout.addWidget(self.params_group)
 
         # 创建步骤控制区域
-        steps_group = QGroupBox("步骤控制")
+        self.steps_group = QGroupBox(tr("ui.step_control"))
         steps_layout = QVBoxLayout()
 
         # 跳过步骤选择
-        self.skip_dwg_to_dxf_check = QCheckBox("跳过DWG→DXF")
-        self.skip_dxf_filter_check = QCheckBox("跳过DXF过滤")
-        self.skip_dxf_to_svg_check = QCheckBox("跳过DXF→SVG")
-        self.skip_svg_to_png_check = QCheckBox("跳过SVG→PNG")
+        self.skip_dwg_to_dxf_check = QCheckBox(tr("sub_tabs.skip_dwg_to_dxf"))
+        self.skip_dxf_filter_check = QCheckBox(tr("sub_tabs.skip_dxf_filter"))
+        self.skip_dxf_to_svg_check = QCheckBox(tr("sub_tabs.skip_dxf_to_svg"))
+        self.skip_svg_to_png_check = QCheckBox(tr("sub_tabs.skip_svg_to_png"))
 
         steps_layout.addWidget(self.skip_dwg_to_dxf_check)
         steps_layout.addWidget(self.skip_dxf_filter_check)
         steps_layout.addWidget(self.skip_dxf_to_svg_check)
         steps_layout.addWidget(self.skip_svg_to_png_check)
 
-        steps_group.setLayout(steps_layout)
-        main_layout.addWidget(steps_group)
+        self.steps_group.setLayout(steps_layout)
+        main_layout.addWidget(self.steps_group)
 
         # 创建进度显示区域
-        progress_group = QGroupBox("进度")
+        self.progress_group = QGroupBox(tr("ui.progress_display"))
         progress_layout = QVBoxLayout()
 
         # 总体进度条
-        progress_layout.addWidget(QLabel("总体进度:"))
+        self.overall_progress_label = QLabel(tr("progress.overall") + ":")
+        progress_layout.addWidget(self.overall_progress_label)
         self.total_progress_bar = QProgressBar()
         progress_layout.addWidget(self.total_progress_bar)
 
         # 当前步骤进度条
-        progress_layout.addWidget(QLabel("当前步骤:"))
+        self.current_step_label = QLabel(tr("progress.current_step") + ":")
+        progress_layout.addWidget(self.current_step_label)
         self.step_progress_bar = QProgressBar()
         progress_layout.addWidget(self.step_progress_bar)
 
         # 处理状态文本
-        self.status_label = QLabel("就绪")
+        self.status_label = QLabel(tr("status.ready"))
         progress_layout.addWidget(self.status_label)
 
-        progress_group.setLayout(progress_layout)
-        main_layout.addWidget(progress_group)
+        self.progress_group.setLayout(progress_layout)
+        main_layout.addWidget(self.progress_group)
 
         # 创建按钮区域
         button_layout = QHBoxLayout()
 
-        self.start_button = QPushButton("开始处理")
+        self.start_button = QPushButton(tr("buttons.start_processing"))
         self.start_button.clicked.connect(self.start_processing)
 
-        self.cancel_button = QPushButton("取消")
+        self.cancel_button = QPushButton(tr("buttons.cancel"))
         self.cancel_button.clicked.connect(self.cancel_processing)
         self.cancel_button.setEnabled(False)
 
@@ -183,23 +195,23 @@ class FullProcessTab(QWidget):
     def update_input_mode(self):
         """更新输入模式"""
         if self.single_file_radio.isChecked():
-            self.browse_input_btn.setText("浏览文件...")
+            self.browse_input_btn.setText(tr("sub_tabs.browse_file"))
         else:
-            self.browse_input_btn.setText("浏览目录...")
+            self.browse_input_btn.setText(tr("sub_tabs.browse_directory"))
 
     def browse_input(self):
         """浏览输入文件或目录"""
         if self.single_file_radio.isChecked():
             # 单个文件模式
             file_path, _ = QFileDialog.getOpenFileName(
-                self, "选择DWG文件", "", "DWG文件 (*.dwg)"
+                self, tr("dialogs.select_dwg_file"), "", tr("dialogs.dwg_files")
             )
             if file_path:
                 self.input_path_edit.setText(file_path)
         else:
             # 批量处理目录模式
             dir_path = QFileDialog.getExistingDirectory(
-                self, "选择包含DWG文件的目录"
+                self, tr("dialogs.select_directory_with_dwg")
             )
             if dir_path:
                 self.input_path_edit.setText(dir_path)
@@ -207,7 +219,7 @@ class FullProcessTab(QWidget):
     def browse_output(self):
         """浏览输出目录"""
         dir_path = QFileDialog.getExistingDirectory(
-            self, "选择输出目录"
+            self, tr("dialogs.select_output_directory")
         )
         if dir_path:
             self.output_dir_edit.setText(dir_path)
@@ -215,7 +227,7 @@ class FullProcessTab(QWidget):
     def browse_config(self):
         """浏览配置文件"""
         file_path, _ = QFileDialog.getOpenFileName(
-            self, "选择配置文件", "", "YAML文件 (*.yaml *.yml)"
+            self, tr("dialogs.select_config_file"), "", tr("dialogs.yaml_files")
         )
         if file_path:
             self.config_path_edit.setText(file_path)
@@ -374,6 +386,51 @@ class FullProcessTab(QWidget):
                                    f"完整处理流程已完成！\n\n{message}")
         else:
             # 处理失败
-            self.status_label.setText("失败")
-            self.log_message.emit(f"完整处理流程失败: {message}")
-            QMessageBox.warning(self, "处理失败", f"完整处理流程中出现错误:\n\n{message}")
+            self.status_label.setText(tr("status_messages.failed"))
+            self.log_message.emit(f"{tr('log_messages.full_process_failed')}: {message}")
+            QMessageBox.warning(self, tr("error_messages.processing_failed"),
+                               f"{tr('log_messages.full_process_failed')}:\n\n{message}")
+
+    def on_language_changed(self):
+        """响应语言切换事件"""
+        # 更新组框标题
+        self.input_group.setTitle(tr("ui.input_settings"))
+        self.params_group.setTitle(tr("ui.parameter_settings"))
+        self.steps_group.setTitle(tr("ui.step_control"))
+        self.progress_group.setTitle(tr("ui.progress_display"))
+
+        # 更新标签文本
+        self.processing_mode_label.setText(tr("sub_tabs.processing_mode") + ":")
+        self.input_path_label.setText(tr("sub_tabs.input_path") + ":")
+        self.output_dir_label.setText(tr("sub_tabs.output_directory") + ":")
+        self.config_path_label.setText(tr("files.config_file_optional") + ":")
+
+        # 更新单选按钮
+        self.single_file_radio.setText(tr("sub_tabs.single_file"))
+        self.batch_dir_radio.setText(tr("sub_tabs.batch_directory"))
+
+        # 更新参数标签
+        self.resolution_label.setText(tr("sub_tabs.target_png_resolution") + ":")
+        self.padding_label.setText(tr("sub_tabs.edge_padding_ratio") + ":")
+        self.line_thickness_label.setText(tr("sub_tabs.line_thickness") + ":")
+
+        # 更新复选框
+        self.skip_dwg_to_dxf_check.setText(tr("sub_tabs.skip_dwg_to_dxf"))
+        self.skip_dxf_filter_check.setText(tr("sub_tabs.skip_dxf_filter"))
+        self.skip_dxf_to_svg_check.setText(tr("sub_tabs.skip_dxf_to_svg"))
+        self.skip_svg_to_png_check.setText(tr("sub_tabs.skip_svg_to_png"))
+
+        # 更新进度标签
+        self.overall_progress_label.setText(tr("progress.overall") + ":")
+        self.current_step_label.setText(tr("progress.current_step") + ":")
+        self.status_label.setText(tr("status.ready"))
+
+        # 更新按钮文本
+        self.browse_input_btn.setText(tr("buttons.browse_ellipsis"))
+        self.browse_output_btn.setText(tr("buttons.browse_ellipsis"))
+        self.browse_config_btn.setText(tr("buttons.browse_ellipsis"))
+        self.start_button.setText(tr("buttons.start_processing"))
+        self.cancel_button.setText(tr("buttons.cancel"))
+
+        # 更新输入模式按钮文本
+        self.update_input_mode()

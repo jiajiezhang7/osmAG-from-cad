@@ -1,0 +1,252 @@
+# 中文语言包
+app:
+  title: "CAD2OSM图形界面应用"
+  ready: "就绪"
+
+menu:
+  file: "文件"
+  new_project: "新建项目"
+  open_project: "打开项目"
+  exit: "退出"
+  help: "帮助"
+  about: "关于"
+  language: "语言"
+  chinese: "中文"
+  english: "English"
+
+tabs:
+  process: "CAD预处理"
+  text: "文本提取"
+  merge: "OSM合并"
+  direction: "方向校正"
+  full_process: "完整流程 (DWG -> PNG)"
+  semi_process: "半自动流程 (DXF -> PNG)"
+
+project:
+  selection: "项目选择"
+  select_project: "选择项目:"
+  refresh: "刷新"
+
+buttons:
+  browse: "浏览"
+  start: "开始处理"
+  stop: "停止"
+  reset: "重置"
+  apply: "应用"
+  cancel: "取消"
+  ok: "确定"
+
+status:
+  processing: "处理中..."
+  completed: "处理完成"
+  failed: "处理失败"
+  stopped: "已停止"
+  ready: "就绪"
+
+messages:
+  feature_in_development: "功能开发中"
+  new_project_developing: "创建新项目功能正在开发中..."
+  open_project_developing: "打开项目功能正在开发中..."
+  language_switched: "语言已切换"
+  language_switch_success: "语言切换成功"
+
+about:
+  title: "关于CAD2OSM"
+  version: "版本: 1.0.0"
+  description: "这是一个用于CAD到OSM转换的图形界面工具，包含以下功能："
+  features:
+    - "CAD预处理：DWG到PNG的转换"
+    - "文本提取：从DXF提取文本并添加到OSM"
+    - "OSM合并：合并多个OSM文件"
+    - "方向校正：校正OSM中多边形的方向"
+  copyright: "© 2025 AGSeg团队"
+
+process:
+  input_file: "输入文件"
+  output_directory: "输出目录"
+  settings: "设置"
+  resolution: "分辨率"
+  padding_ratio: "边距比例"
+  line_thickness: "线条粗细"
+  progress: "进度"
+  step_progress: "步骤进度"
+
+text:
+  layer_name: "图层名称"
+  nearby_threshold: "邻近阈值"
+  max_center_distance_ratio: "最大中心距离比例"
+  visualize: "可视化"
+  filter_text_list: "过滤文本列表"
+
+merge:
+  area_type: "区域类型"
+  offset_method: "偏移方法"
+  min_matches: "最小匹配数"
+  both: "两者"
+  vertex_average: "顶点平均"
+
+direction:
+  correction_method: "校正方法"
+  auto_detect: "自动检测"
+  manual_select: "手动选择"
+
+errors:
+  file_not_found: "文件未找到"
+  invalid_format: "无效格式"
+  processing_error: "处理错误"
+  permission_denied: "权限被拒绝"
+
+# 通用UI组件
+ui:
+  input_settings: "输入设置"
+  parameter_settings: "参数设置"
+  step_control: "步骤控制"
+  progress_display: "进度显示"
+  result_statistics: "结果统计"
+  result_preview: "结果预览"
+  processing_mode: "处理模式"
+  rules_description: "规则说明"
+  filter_settings: "过滤设置"
+
+# 文件相关
+files:
+  dxf_file: "DXF文件"
+  osm_file: "OSM文件"
+  bounds_file: "边界文件"
+  text_file: "文本文件"
+  output_file: "输出文件"
+  config_file: "配置文件"
+  config_file_optional: "配置文件(可选)"
+  reference_osm: "参照OSM文件"
+  target_osm: "目标OSM文件"
+
+# 处理模式
+modes:
+  full_process: "完整流程"
+  extract_only: "仅提取文本"
+  match_only: "仅匹配文本"
+
+# 参数名称
+params:
+  layer_name: "文本图层名称"
+  nearby_threshold: "附近匹配偏移阈值"
+  center_distance_ratio: "中心偏移比例阈值"
+  visualize: "生成可视化图像"
+  area_type: "匹配区域类型"
+  offset_method: "偏移计算方法"
+  min_matches: "最小匹配区域数量"
+
+# 统计信息
+stats:
+  matched_areas: "匹配区域数量"
+  lat_offset: "纬度偏移量"
+  lon_offset: "经度偏移量"
+  processed_ways: "处理的way数量"
+  reversed_ways: "反转的way数量"
+
+# 进度相关
+progress:
+  overall: "总体进度"
+  current_step: "当前步骤"
+
+# 按钮文本
+buttons:
+  browse: "浏览"
+  browse_ellipsis: "浏览..."
+  start_processing: "开始处理"
+  start_merging: "开始合并"
+  start_correction: "开始校正"
+  cancel: "取消"
+  add: "添加"
+  remove: "移除"
+  clear: "清空"
+
+# 选项值
+options:
+  elevator: "电梯"
+  stairs: "楼梯"
+  both: "两者"
+  centroid: "质心"
+  vertex_average: "顶点平均"
+
+# 提示信息
+hints:
+  filter_text_placeholder: "输入要过滤的文本，每行一个。例如：\n卫生间\n电梯\n楼梯"
+  preview_placeholder: "匹配结果预览将在这里显示"
+
+# 规则说明
+rules:
+  direction_correction: "方向校正规则：\n\n1. 房间(room)多边形应为逆时针方向\n2. 结构(structure)多边形应为顺时针方向\n\n校正过程将自动检测多边形的方向，并根据需要反转节点顺序。"
+  filter_text_description: "要过滤的文本列表（每行一个）："
+
+# 子标签页相关
+sub_tabs:
+  processing_mode: "处理模式"
+  input_path: "输入路径"
+  output_directory: "输出目录"
+  output_root_directory: "输出根目录"
+  single_file: "单个文件"
+  batch_directory: "批量处理目录"
+  browse_file: "浏览文件..."
+  browse_directory: "浏览目录..."
+  target_png_resolution: "目标PNG分辨率"
+  edge_padding_ratio: "边缘空隙比例"
+  line_thickness: "线条粗细"
+  skip_steps: "跳过步骤"
+  skip_dwg_to_dxf: "跳过DWG→DXF"
+  skip_dxf_filter: "跳过DXF过滤"
+  skip_dxf_to_svg: "跳过DXF→SVG"
+  skip_svg_to_png: "跳过SVG→PNG"
+
+# 文件对话框
+dialogs:
+  select_dwg_file: "选择DWG文件"
+  select_dxf_file: "选择已过滤DXF文件"
+  select_directory_with_dwg: "选择包含DWG文件的目录"
+  select_directory_with_dxf: "选择包含已过滤DXF文件的目录"
+  select_output_directory: "选择输出目录"
+  select_output_root_directory: "选择输出根目录（将在此目录下创建img子目录）"
+  select_config_file: "选择配置文件"
+  dwg_files: "DWG文件 (*.dwg)"
+  dxf_files: "DXF文件 (*.dxf)"
+  yaml_files: "YAML文件 (*.yaml *.yml)"
+
+# 状态消息
+status_messages:
+  processing: "正在处理..."
+  processing_with_detail: "正在处理: {0}"
+  processing_file: "正在处理文件"
+  completed: "完成"
+  failed: "失败"
+  cancelled: "已取消"
+  ready: "就绪"
+
+# 提示和说明
+notes:
+  output_subdirs: "注：将在输出根目录下自动创建 img/png_manual_filter 和 img/svg_manual_filter 子目录"
+
+# 错误消息
+error_messages:
+  input_error: "输入错误"
+  select_input_file_or_directory: "请选择输入文件或目录"
+  select_output_directory: "请选择输出目录"
+  processing_failed: "处理失败"
+  processing_completed: "处理完成"
+
+# 日志消息
+log_messages:
+  start_full_batch_process: "开始批量完整处理流程..."
+  start_full_single_process: "开始单文件完整处理流程..."
+  start_semi_batch_process: "开始批量半自动处理流程..."
+  start_semi_single_process: "开始单文件半自动处理流程..."
+  input_directory: "输入目录"
+  input_file: "输入文件"
+  output_directory: "输出目录"
+  output_root_directory: "输出根目录"
+  will_create: "将创建"
+  full_process_completed: "完整处理流程完成"
+  full_process_failed: "完整处理流程失败"
+  full_process_cancelled: "完整处理流程已取消"
+  semi_process_completed: "半自动处理流程完成"
+  semi_process_failed: "半自动处理流程失败"
+  semi_process_cancelled: "半自动处理流程已取消"

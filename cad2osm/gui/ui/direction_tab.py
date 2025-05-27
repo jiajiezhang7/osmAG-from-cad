@@ -23,6 +23,9 @@ from PyQt5.QtCore import Qt, pyqtSignal, QThread, QSettings
 # 导入方向校正模块
 from modules.direction_module import DirectionModule
 
+# 导入语言管理器
+from utils.language_manager import tr
+
 class DirectionTab(QWidget):
     """
     方向校正标签页，用于校正OSM文件中多边形的方向
@@ -53,85 +56,85 @@ class DirectionTab(QWidget):
         main_layout = QVBoxLayout(self)
 
         # 创建输入区域
-        input_group = QGroupBox("输入设置")
+        self.input_group = QGroupBox(tr("ui.input_settings"))
         input_layout = QFormLayout()
 
         # OSM文件选择
         self.osm_path_edit = QLineEdit()
-        self.browse_osm_btn = QPushButton("浏览...")
+        self.browse_osm_btn = QPushButton(tr("buttons.browse_ellipsis"))
         self.browse_osm_btn.clicked.connect(self.browse_osm)
 
         osm_path_layout = QHBoxLayout()
         osm_path_layout.addWidget(self.osm_path_edit)
         osm_path_layout.addWidget(self.browse_osm_btn)
-        input_layout.addRow("OSM文件:", osm_path_layout)
+        self.osm_label = QLabel(tr("files.osm_file") + ":")
+        input_layout.addRow(self.osm_label, osm_path_layout)
 
         # 输出文件路径
         self.output_path_edit = QLineEdit()
-        self.browse_output_btn = QPushButton("浏览...")
+        self.browse_output_btn = QPushButton(tr("buttons.browse_ellipsis"))
         self.browse_output_btn.clicked.connect(self.browse_output)
 
         output_path_layout = QHBoxLayout()
         output_path_layout.addWidget(self.output_path_edit)
         output_path_layout.addWidget(self.browse_output_btn)
-        input_layout.addRow("输出文件:", output_path_layout)
+        self.output_label = QLabel(tr("files.output_file") + ":")
+        input_layout.addRow(self.output_label, output_path_layout)
 
-        input_group.setLayout(input_layout)
-        main_layout.addWidget(input_group)
+        self.input_group.setLayout(input_layout)
+        main_layout.addWidget(self.input_group)
 
         # 创建规则说明区域
-        rules_group = QGroupBox("方向校正规则")
+        self.rules_group = QGroupBox(tr("ui.rules_description"))
         rules_layout = QVBoxLayout()
 
-        rules_text = QTextEdit()
-        rules_text.setReadOnly(True)
-        rules_text.setPlainText(
-            "方向校正规则：\n\n"
-            "1. 房间(room)多边形应为逆时针方向\n"
-            "2. 结构(structure)多边形应为顺时针方向\n\n"
-            "校正过程将自动检测多边形的方向，并根据需要反转节点顺序。"
-        )
-        rules_layout.addWidget(rules_text)
+        self.rules_text = QTextEdit()
+        self.rules_text.setReadOnly(True)
+        self.rules_text.setPlainText(tr("rules.direction_correction"))
+        rules_layout.addWidget(self.rules_text)
 
-        rules_group.setLayout(rules_layout)
-        main_layout.addWidget(rules_group)
+        self.rules_group.setLayout(rules_layout)
+        main_layout.addWidget(self.rules_group)
 
         # 创建结果统计区域
-        stats_group = QGroupBox("结果统计")
+        self.stats_group = QGroupBox(tr("ui.result_statistics"))
         stats_layout = QFormLayout()
 
         self.processed_ways_label = QLabel("0")
-        stats_layout.addRow("处理的way数量:", self.processed_ways_label)
+        self.processed_ways_stat_label = QLabel(tr("stats.processed_ways") + ":")
+        stats_layout.addRow(self.processed_ways_stat_label, self.processed_ways_label)
 
         self.reversed_ways_label = QLabel("0")
-        stats_layout.addRow("反转的way数量:", self.reversed_ways_label)
+        self.reversed_ways_stat_label = QLabel(tr("stats.reversed_ways") + ":")
+        stats_layout.addRow(self.reversed_ways_stat_label, self.reversed_ways_label)
 
-        stats_group.setLayout(stats_layout)
-        main_layout.addWidget(stats_group)
+        self.stats_group.setLayout(stats_layout)
+        main_layout.addWidget(self.stats_group)
 
         # 创建进度显示区域
-        progress_group = QGroupBox("进度")
+        self.progress_group = QGroupBox(tr("ui.progress_display"))
         progress_layout = QVBoxLayout()
 
         # 总体进度条
-        progress_layout.addWidget(QLabel("总体进度:"))
+        self.overall_progress_label = QLabel(tr("progress.overall") + ":")
+        progress_layout.addWidget(self.overall_progress_label)
         self.progress_bar = QProgressBar()
         progress_layout.addWidget(self.progress_bar)
 
         # 处理状态文本
-        self.status_label = QLabel("就绪")
+        self.status_label = QLabel(tr("status.ready"))
         progress_layout.addWidget(self.status_label)
 
-        progress_group.setLayout(progress_layout)
-        main_layout.addWidget(progress_group)
+        self.progress_group.setLayout(progress_layout)
+        main_layout.addWidget(self.progress_group)
 
         # 创建按钮区域
         button_layout = QHBoxLayout()
 
-        self.start_button = QPushButton("开始校正")
+        self.start_button = QPushButton(tr("buttons.start_correction"))
         self.start_button.clicked.connect(self.start_correction)
 
-        self.cancel_button = QPushButton("取消")
+        self.cancel_button = QPushButton(tr("buttons.cancel"))
         self.cancel_button.clicked.connect(self.cancel_correction)
         self.cancel_button.setEnabled(False)
 
@@ -311,3 +314,32 @@ class DirectionTab(QWidget):
             self.status_label.setText("失败")
             self.log_message.emit(f"方向校正失败: {message}")
             QMessageBox.warning(self, "校正失败", f"方向校正过程中出现错误: {message}")
+
+    def on_language_changed(self):
+        """响应语言切换事件"""
+        # 更新组框标题
+        self.input_group.setTitle(tr("ui.input_settings"))
+        self.rules_group.setTitle(tr("ui.rules_description"))
+        self.stats_group.setTitle(tr("ui.result_statistics"))
+        self.progress_group.setTitle(tr("ui.progress_display"))
+
+        # 更新文件标签
+        self.osm_label.setText(tr("files.osm_file") + ":")
+        self.output_label.setText(tr("files.output_file") + ":")
+
+        # 更新规则说明文本
+        self.rules_text.setPlainText(tr("rules.direction_correction"))
+
+        # 更新统计标签
+        self.processed_ways_stat_label.setText(tr("stats.processed_ways") + ":")
+        self.reversed_ways_stat_label.setText(tr("stats.reversed_ways") + ":")
+
+        # 更新进度标签
+        self.overall_progress_label.setText(tr("progress.overall") + ":")
+        self.status_label.setText(tr("status.ready"))
+
+        # 更新按钮文本
+        self.browse_osm_btn.setText(tr("buttons.browse_ellipsis"))
+        self.browse_output_btn.setText(tr("buttons.browse_ellipsis"))
+        self.start_button.setText(tr("buttons.start_correction"))
+        self.cancel_button.setText(tr("buttons.cancel"))

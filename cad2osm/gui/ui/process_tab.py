@@ -25,6 +25,9 @@ from modules.process_module import ProcessModule
 from .full_process_tab import FullProcessTab
 from .semi_process_tab import SemiProcessTab
 
+# 导入语言管理器
+from utils.language_manager import tr
+
 class ProcessTab(QWidget):
     """
     CAD预处理标签页，包含完整流程和半自动流程两个子标签页
@@ -54,7 +57,7 @@ class ProcessTab(QWidget):
         main_layout = QVBoxLayout(self)
 
         # 创建项目选择区域
-        project_group = QGroupBox("项目选择")
+        self.project_group = QGroupBox(tr("project.selection"))
         project_layout = QHBoxLayout()
 
         self.project_combo = QComboBox()
@@ -62,15 +65,16 @@ class ProcessTab(QWidget):
         if self.project_manager.get_current_project():
             self.project_combo.setCurrentText(self.project_manager.get_current_project())
 
-        self.refresh_project_btn = QPushButton("刷新")
+        self.refresh_project_btn = QPushButton(tr("project.refresh"))
         self.refresh_project_btn.clicked.connect(self.refresh_projects)
 
-        project_layout.addWidget(QLabel("选择项目:"))
+        self.select_project_label = QLabel(tr("project.select_project"))
+        project_layout.addWidget(self.select_project_label)
         project_layout.addWidget(self.project_combo, 1)
         project_layout.addWidget(self.refresh_project_btn)
 
-        project_group.setLayout(project_layout)
-        main_layout.addWidget(project_group)
+        self.project_group.setLayout(project_layout)
+        main_layout.addWidget(self.project_group)
 
         # 创建子标签页
         self.tab_widget = QTabWidget()
@@ -89,8 +93,8 @@ class ProcessTab(QWidget):
         self.process_module.process_completed.connect(self.route_completion_signal)
 
         # 添加子标签页
-        self.tab_widget.addTab(self.full_process_tab, "完整流程 (DWG -> PNG)")
-        self.tab_widget.addTab(self.semi_process_tab, "半自动流程 (DXF -> PNG)")
+        self.tab_widget.addTab(self.full_process_tab, tr("tabs.full_process"))
+        self.tab_widget.addTab(self.semi_process_tab, tr("tabs.semi_process"))
 
         main_layout.addWidget(self.tab_widget)
 
@@ -140,3 +144,20 @@ class ProcessTab(QWidget):
     def set_active_processing_tab(self, tab_type):
         """设置当前正在运行的标签页"""
         self.active_processing_tab = tab_type
+
+    def on_language_changed(self):
+        """响应语言切换事件"""
+        # 更新项目选择区域
+        self.project_group.setTitle(tr("project.selection"))
+        self.select_project_label.setText(tr("project.select_project"))
+        self.refresh_project_btn.setText(tr("project.refresh"))
+
+        # 更新子标签页标题
+        self.tab_widget.setTabText(0, tr("tabs.full_process"))
+        self.tab_widget.setTabText(1, tr("tabs.semi_process"))
+
+        # 通知子标签页更新语言
+        if hasattr(self.full_process_tab, 'on_language_changed'):
+            self.full_process_tab.on_language_changed()
+        if hasattr(self.semi_process_tab, 'on_language_changed'):
+            self.semi_process_tab.on_language_changed()

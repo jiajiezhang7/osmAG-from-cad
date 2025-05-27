@@ -23,6 +23,9 @@ from PyQt5.QtCore import Qt, pyqtSignal, QThread, QSettings
 # 导入合并模块
 from modules.merge_module import MergeModule
 
+# 导入语言管理器
+from utils.language_manager import tr
+
 class MergeTab(QWidget):
     """
     OSM合并标签页，用于合并多个OSM文件
@@ -53,18 +56,19 @@ class MergeTab(QWidget):
         main_layout = QVBoxLayout(self)
 
         # 创建输入区域
-        input_group = QGroupBox("输入设置")
+        self.input_group = QGroupBox(tr("ui.input_settings"))
         input_layout = QFormLayout()
 
         # 参照OSM文件选择
         self.ref_path_edit = QLineEdit()
-        self.browse_ref_btn = QPushButton("浏览...")
+        self.browse_ref_btn = QPushButton(tr("buttons.browse_ellipsis"))
         self.browse_ref_btn.clicked.connect(self.browse_ref)
 
         ref_path_layout = QHBoxLayout()
         ref_path_layout.addWidget(self.ref_path_edit)
         ref_path_layout.addWidget(self.browse_ref_btn)
-        input_layout.addRow("参照OSM文件:", ref_path_layout)
+        self.ref_label = QLabel(tr("files.reference_osm") + ":")
+        input_layout.addRow(self.ref_label, ref_path_layout)
 
         # 目标OSM文件选择
         self.target_list = QListWidget()
@@ -75,11 +79,11 @@ class MergeTab(QWidget):
         target_list_layout.addWidget(self.target_list)
 
         target_buttons_layout = QHBoxLayout()
-        self.add_target_btn = QPushButton("添加")
+        self.add_target_btn = QPushButton(tr("buttons.add"))
         self.add_target_btn.clicked.connect(self.add_target)
-        self.remove_target_btn = QPushButton("移除")
+        self.remove_target_btn = QPushButton(tr("buttons.remove"))
         self.remove_target_btn.clicked.connect(self.remove_target)
-        self.clear_targets_btn = QPushButton("清空")
+        self.clear_targets_btn = QPushButton(tr("buttons.clear"))
         self.clear_targets_btn.clicked.connect(self.clear_targets)
 
         target_buttons_layout.addWidget(self.add_target_btn)
@@ -87,85 +91,94 @@ class MergeTab(QWidget):
         target_buttons_layout.addWidget(self.clear_targets_btn)
 
         target_list_layout.addLayout(target_buttons_layout)
-        input_layout.addRow("目标OSM文件:", target_list_layout)
+        self.target_label = QLabel(tr("files.target_osm") + ":")
+        input_layout.addRow(self.target_label, target_list_layout)
 
         # 输出文件路径
         self.output_path_edit = QLineEdit()
-        self.browse_output_btn = QPushButton("浏览...")
+        self.browse_output_btn = QPushButton(tr("buttons.browse_ellipsis"))
         self.browse_output_btn.clicked.connect(self.browse_output)
 
         output_path_layout = QHBoxLayout()
         output_path_layout.addWidget(self.output_path_edit)
         output_path_layout.addWidget(self.browse_output_btn)
-        input_layout.addRow("输出文件:", output_path_layout)
+        self.output_label = QLabel(tr("files.output_file") + ":")
+        input_layout.addRow(self.output_label, output_path_layout)
 
-        input_group.setLayout(input_layout)
-        main_layout.addWidget(input_group)
+        self.input_group.setLayout(input_layout)
+        main_layout.addWidget(self.input_group)
 
         # 创建参数设置区域
-        params_group = QGroupBox("参数设置")
+        self.params_group = QGroupBox(tr("ui.parameter_settings"))
         params_layout = QFormLayout()
 
         # 匹配区域类型选择
         self.area_type_combo = QComboBox()
-        self.area_type_combo.addItems(["电梯", "楼梯", "两者"])
+        self.area_type_combo.addItems([tr("options.elevator"), tr("options.stairs"), tr("options.both")])
         self.area_type_combo.setCurrentIndex(2)  # 默认选择"两者"
-        params_layout.addRow("匹配区域类型:", self.area_type_combo)
+        self.area_type_label = QLabel(tr("params.area_type") + ":")
+        params_layout.addRow(self.area_type_label, self.area_type_combo)
 
         # 偏移计算方法选择
         self.offset_method_combo = QComboBox()
-        self.offset_method_combo.addItems(["质心", "顶点平均"])
+        self.offset_method_combo.addItems([tr("options.centroid"), tr("options.vertex_average")])
         self.offset_method_combo.setCurrentIndex(1)  # 默认选择"顶点平均"
-        params_layout.addRow("偏移计算方法:", self.offset_method_combo)
+        self.offset_method_label = QLabel(tr("params.offset_method") + ":")
+        params_layout.addRow(self.offset_method_label, self.offset_method_combo)
 
         # 最小匹配区域数量设置
         self.min_matches_spin = QSpinBox()
         self.min_matches_spin.setRange(1, 10)
         self.min_matches_spin.setValue(2)
-        params_layout.addRow("最小匹配区域数量:", self.min_matches_spin)
+        self.min_matches_label = QLabel(tr("params.min_matches") + ":")
+        params_layout.addRow(self.min_matches_label, self.min_matches_spin)
 
-        params_group.setLayout(params_layout)
-        main_layout.addWidget(params_group)
+        self.params_group.setLayout(params_layout)
+        main_layout.addWidget(self.params_group)
 
         # 创建结果统计区域
-        stats_group = QGroupBox("结果统计")
+        self.stats_group = QGroupBox(tr("ui.result_statistics"))
         stats_layout = QFormLayout()
 
         self.matched_areas_label = QLabel("0")
-        stats_layout.addRow("匹配区域数量:", self.matched_areas_label)
+        self.matched_areas_stat_label = QLabel(tr("stats.matched_areas") + ":")
+        stats_layout.addRow(self.matched_areas_stat_label, self.matched_areas_label)
 
         self.lat_offset_label = QLabel("0.0")
-        stats_layout.addRow("纬度偏移量:", self.lat_offset_label)
+        self.lat_offset_stat_label = QLabel(tr("stats.lat_offset") + ":")
+        stats_layout.addRow(self.lat_offset_stat_label, self.lat_offset_label)
 
         self.lon_offset_label = QLabel("0.0")
-        stats_layout.addRow("经度偏移量:", self.lon_offset_label)
+        self.lon_offset_stat_label = QLabel(tr("stats.lon_offset") + ":")
+        stats_layout.addRow(self.lon_offset_stat_label, self.lon_offset_label)
 
-        stats_group.setLayout(stats_layout)
-        main_layout.addWidget(stats_group)
+        self.stats_group.setLayout(stats_layout)
+        main_layout.addWidget(self.stats_group)
 
         # 创建进度显示区域
-        progress_group = QGroupBox("进度")
+        self.progress_group = QGroupBox(tr("ui.progress_display"))
         progress_layout = QVBoxLayout()
 
         # 总体进度条
-        progress_layout.addWidget(QLabel("总体进度:"))
+        self.overall_progress_label = QLabel(tr("progress.overall") + ":")
+        progress_layout.addWidget(self.overall_progress_label)
         self.total_progress_bar = QProgressBar()
         progress_layout.addWidget(self.total_progress_bar)
 
         # 处理状态文本
-        self.status_label = QLabel("就绪")
+        self.status_label = QLabel(tr("status.ready"))
         progress_layout.addWidget(self.status_label)
 
-        progress_group.setLayout(progress_layout)
-        main_layout.addWidget(progress_group)
+        self.progress_group.setLayout(progress_layout)
+        main_layout.addWidget(self.progress_group)
 
         # 创建按钮区域
         button_layout = QHBoxLayout()
 
-        self.start_button = QPushButton("开始合并")
+        self.start_button = QPushButton(tr("buttons.start_merging"))
         self.start_button.clicked.connect(self.start_merging)
 
-        self.cancel_button = QPushButton("取消")
+        self.cancel_button = QPushButton(tr("buttons.cancel"))
         self.cancel_button.clicked.connect(self.cancel_merging)
         self.cancel_button.setEnabled(False)
 
@@ -389,3 +402,48 @@ class MergeTab(QWidget):
             self.status_label.setText("失败")
             self.log_message.emit(f"OSM合并失败: {message}")
             QMessageBox.warning(self, "合并失败", f"OSM合并过程中出现错误: {message}")
+
+    def on_language_changed(self):
+        """响应语言切换事件"""
+        # 更新组框标题
+        self.input_group.setTitle(tr("ui.input_settings"))
+        self.params_group.setTitle(tr("ui.parameter_settings"))
+        self.stats_group.setTitle(tr("ui.result_statistics"))
+        self.progress_group.setTitle(tr("ui.progress_display"))
+
+        # 更新文件标签
+        self.ref_label.setText(tr("files.reference_osm") + ":")
+        self.target_label.setText(tr("files.target_osm") + ":")
+        self.output_label.setText(tr("files.output_file") + ":")
+
+        # 更新参数标签
+        self.area_type_label.setText(tr("params.area_type") + ":")
+        self.offset_method_label.setText(tr("params.offset_method") + ":")
+        self.min_matches_label.setText(tr("params.min_matches") + ":")
+
+        # 更新下拉框选项
+        self.area_type_combo.clear()
+        self.area_type_combo.addItems([tr("options.elevator"), tr("options.stairs"), tr("options.both")])
+        self.area_type_combo.setCurrentIndex(2)
+
+        self.offset_method_combo.clear()
+        self.offset_method_combo.addItems([tr("options.centroid"), tr("options.vertex_average")])
+        self.offset_method_combo.setCurrentIndex(1)
+
+        # 更新统计标签
+        self.matched_areas_stat_label.setText(tr("stats.matched_areas") + ":")
+        self.lat_offset_stat_label.setText(tr("stats.lat_offset") + ":")
+        self.lon_offset_stat_label.setText(tr("stats.lon_offset") + ":")
+
+        # 更新进度标签
+        self.overall_progress_label.setText(tr("progress.overall") + ":")
+        self.status_label.setText(tr("status.ready"))
+
+        # 更新按钮文本
+        self.browse_ref_btn.setText(tr("buttons.browse_ellipsis"))
+        self.browse_output_btn.setText(tr("buttons.browse_ellipsis"))
+        self.add_target_btn.setText(tr("buttons.add"))
+        self.remove_target_btn.setText(tr("buttons.remove"))
+        self.clear_targets_btn.setText(tr("buttons.clear"))
+        self.start_button.setText(tr("buttons.start_merging"))
+        self.cancel_button.setText(tr("buttons.cancel"))
