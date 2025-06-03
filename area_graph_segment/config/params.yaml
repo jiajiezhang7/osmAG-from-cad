@@ -60,3 +60,7 @@ polygon_processing:
 # 坐标转换参数
 coordinate_conversion:
   padding_ratio: 0.03  # 边缘空隙比例，默认为3%，用于dxf2svg、extract_room_polygons等
+
+# 楼层信息
+level: "1"  # 默认楼层值，用于OSM标签
+height_per_level: 3.2  # 每层高度（米），用于计算房间和通道的高度

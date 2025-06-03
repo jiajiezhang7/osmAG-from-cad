@@ -1,5 +1,5 @@
 ## Indoor osmAG Map Standard
-This is a draft by Jiajie Zhang. Some details still need to be discussed and approved by Prof. Schwertfeger.
+This is a draft by Jiajie Zhang, approved by Prof. Schwertfeger after discussion on 2025.2.24, add more rules by discussion with Prof. on 2025.5.14(see update_25-5-14).
 
 This document outlines the specifications for the **osmAG (OpenStreetMap Area Graph)** map format, which is specifically designed for mobile robotics applications. The osmAG format is built upon and extends the **OpenStreetMap (OSM) XML** format to incorporate hierarchical structures, semantic information, and topometric data.
 
@@ -29,7 +29,7 @@ The osmAG format utilizes and extends the OSM XML format with specific enhanceme
 - **XML Tag: `way`:** Represents an ordered sequence of nodes, utilized in osmAG to define both areas and passages.
     - Area-specific Tags:
         - **`height`:** Defines the vertical dimension of different floors using the standard OSM height key.
-        - `indoor`: Currently set uniformly to "room" (usage under review for necessity)
+        - `indoor`: Currently set uniformly to "room" (for compatiability with official simple indoor tagging https://wiki.openstreetmap.org/wiki/Zh-hans:Simple_Indoor_Tagging)
         - `level`: Indicates the floor number within the building hierarchy.
         - `name`: Specifies the area's identifier, typically derived from CAD documentation.
         - **`osmAG:type`:** Distinguishes between `area` and `passage` elements.
@@ -50,17 +50,21 @@ The hierarchical organization serves two primary functions:
 
 - **Area Aggregation:** Enables the logical combination of adjacent areas to form larger unified spaces. This applies to both outdoor scenarios (e.g., combining parking lots with streets) and indoor environments (e.g., grouping rooms within a floor).
 - **Multi-Level Organization:** Facilitates the representation of vertically stacked 2D areas to accurately model multi-story buildings.
+- **Containment Principle:** For a parent area representing a hierarchy, all its child areas must be strictly within the parent area.
+- **Non-Overlapping Principle (Same Hierarchy):** Any two areas under the same immediate parent (i.e., at the same hierarchy level within that parent) must not overlap. Areas can overlap if they are at different hierarchy levels or belong to different parent areas after aggregation.
 
 ### **IV. Rules for Elevators and Stairs**
 
 - Elevators and stairs serve as special vertical connectors between floors. In osmAG, they are implemented as areas with distinctive semantic tags: **`osmAG:areatype` = elevator || stairs**
+- **Inter-Floor Passages:** For elevators and stairwells, passages are explicitly defined to connect their corresponding areas of the same name across different (typically adjacent) floors. These passages function as the edges representing vertical movement between these areas, e.g., `osmAG:from` = `elevatorA_floor1_area`, `osmAG:to` = `elevatorA_floor2_area`. The `level` attribute of these passages should be set to the level value of the upper floor being connected. Similarly, the `height` attribute should also follow the same assignment principle, using the height value of the upper floor.
 - Elevator Implementation:
     - Each floor contains an area representing the same elevator, with the floor area as its parent.
     - Elevator access points are represented by passages, defined using osmAG:from = elevator area, osmAG:to = connected floor area
     - (The current implementation follows standard area rules with minimal exceptions, adhering to the principle of maintaining consistent representation with minimal special cases)
 - Stairwell Implementation:
     - Follows the same pattern as elevators, differentiated by the semantic tag: `osmAG:areaType`= stairs
-- Escalator-style Staircases:
+- Escalator/Escalator-style Staircases :
+    - `osmAG:areaType`= stairs
     - only one area representing the escalator-style staircase, parented to the higher floor.
     - Features two passages representing both ends:
         - First passage: osmAG:from = staircase area, osmAG:to = connected area on floor A

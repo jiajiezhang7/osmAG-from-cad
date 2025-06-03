@@ -249,6 +249,31 @@ void exportToOsmAG(AreaGraph* areaGraph,
     // 设置 PNG 图像的分辨率，用于将像素坐标转换为实际的米单位
     GeometryUtils::setResolution(resolution);
 
+    // 读取楼层信息
+    std::string level = "1";  // 默认值
+    double height_per_level = 3.2;  // 默认每层高度（米）
+    try {
+        auto& params = ParamsLoader::getInstance();
+        if (params.params["level"]) {
+            level = params.params["level"].as<std::string>();
+        }
+        if (params.params["height_per_level"]) {
+            height_per_level = params.params["height_per_level"].as<double>();
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "警告: 读取楼层信息失败，使用默认值: " << e.what() << std::endl;
+    }
+    
+    // 计算高度（height = height_per_level * level）
+    double height = height_per_level;
+    try {
+        // 将level转换为数字进行计算
+        double level_num = std::stod(level);
+        height = height_per_level * level_num;
+    } catch (const std::exception& e) {
+        std::cerr << "警告: 计算高度失败，使用默认高度: " << e.what() << std::endl;
+    }
+
     // 创建根节点，使用配置的经纬度
     // 注意：我们现在使用 root_node 在 PNG 中的实际像素位置作为笛卡尔坐标
     topo_geometry::point root_point(root_pixel_x, root_pixel_y);
@@ -582,6 +607,8 @@ void exportToOsmAG(AreaGraph* areaGraph,
         osmFile << "    <tag k='name' v='room_" << roomVtx->roomId << "' />\n";
         osmFile << "    <tag k='osmAG:areaType' v='room' />\n";
         osmFile << "    <tag k='osmAG:type' v='area' />\n";
+        osmFile << "    <tag k='level' v='" << level << "' />\n";
+        osmFile << "    <tag k='height' v='" << height << "' />\n";
         osmFile << "  </way>\n";
     }
 
@@ -605,6 +632,8 @@ void exportToOsmAG(AreaGraph* areaGraph,
         osmFile << "    <tag k='osmAG:from' v='room_" << ptA.roomA->roomId << "' />\n";
         osmFile << "    <tag k='osmAG:to' v='room_" << ptA.roomB->roomId << "' />\n";
         osmFile << "    <tag k='osmAG:type' v='passage' />\n";
+        osmFile << "    <tag k='level' v='" << level << "' />\n";
+        osmFile << "    <tag k='height' v='" << height << "' />\n";
         osmFile << "  </way>\n";
     }
 
