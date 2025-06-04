@@ -1,0 +1,84 @@
+{
+  "statistics": {
+    "total_nodes": 408,
+    "total_ways": 59,
+    "total_areas": 27,
+    "total_passages": 32,
+    "total_vertical_transport": 2,
+    "total_cross_level_passages": 0,
+    "areas_by_level": {
+      "2": 27
+    },
+    "vertical_transport_by_level": {
+      "2": 2
+    },
+    "semantic_name_patterns": {
+      "area": 24,
+      "structure": 1,
+      "passage": 32,
+      "elevator": 2
+    },
+    "errors": 0,
+    "warnings": 2,
+    "infos": 0,
+    "avg_nodes_per_area_by_level": {
+      "2": 18.333333333333332
+    },
+    "area_connections": {
+      "E1d-F2-COR-01": 17,
+      "E1d-F2": 1,
+      "E1d-F2-COR-02": 6,
+      "E1d-F2-SE": 1,
+      "E1d-F2-WE": 1,
+      "E1-ST-08": 1,
+      "E1d-F2-WR": 1,
+      "E1d-F2-CL-01": 1,
+      "E1d-F2-MR": 1,
+      "E1d-F2-07": 1,
+      "E1d-F2-COR-03": 7,
+      "E1d-F2-13": 1,
+      "E1d-F2-14": 1,
+      "E1-ST-09": 1,
+      "E1d-F2-06": 1,
+      "E1d-F2-05": 1,
+      "E1d-F2-04": 1,
+      "E1d-F2-03": 1,
+      "E1d-F2-02": 1,
+      "E2-P4": 1,
+      "E2-P3": 1,
+      "E1d-F2-01": 1,
+      "E1d-F2-08": 1,
+      "E1d-F2-09": 1,
+      "E1d-F2-10": 1,
+      "E1d-F2-11": 1,
+      "E1d-F2-12": 1
+    },
+    "avg_connections_per_area": 2.0
+  },
+  "results": [
+    {
+      "level": "WARNING",
+      "category": "VERTICAL_TRANSPORT",
+      "message": "垂直交通设施'E2-P3'只在一个楼层存在",
+      "element_id": "-126023",
+      "line_number": null,
+      "details": {}
+    },
+    {
+      "level": "WARNING",
+      "category": "VERTICAL_TRANSPORT",
+      "message": "垂直交通设施'E2-P4'只在一个楼层存在",
+      "element_id": "-126270",
+      "line_number": null,
+      "details": {}
+    }
+  ],
+  "summary": {
+    "total_issues": 2,
+    "errors": 0,
+    "warnings": 2,
+    "infos": 0,
+    "passed": true,
+    "semantic_version": true
+  }
+}

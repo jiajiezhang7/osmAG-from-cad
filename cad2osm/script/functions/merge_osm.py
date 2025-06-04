@@ -24,6 +24,7 @@ import yaml
 import copy
 import statistics
 from collections import defaultdict
+import random
 
 
 def load_yaml_config(file_path):
@@ -132,6 +133,51 @@ def find_matching_areas(osm_root, area_type):
     
     return areas
 
+
+def get_tag_value(element, tag_key):
+    """
+    获取元素的标签值
+    """
+    tag = element.find(f".//tag[@k='{tag_key}']")
+    if tag is not None:
+        return tag.get('v')
+    return None
+
+def calculate_polygon_center(nodes, node_dict):
+    """
+    计算多边形的中心点坐标 (来自 add_vertical_passages.py)
+    使用更稳定的算法，确保相同形状的多边形计算出相同的中心点
+    """
+    # 收集所有节点的坐标
+    points = []
+    for nd_ref in nodes:
+        node_id = nd_ref.get('ref')
+        if node_id in node_dict:
+            node = node_dict[node_id]
+            lat = float(node.get('lat'))
+            lon = float(node.get('lon'))
+            points.append((lat, lon))
+    
+    if not points:
+        return None, None
+    
+    # 首先按照坐标排序，确保相同形状的多边形有相同的顺序
+    points.sort()
+    
+    # 直接计算边界框的中心点，这对于矩形电梯/楼梯足够准确
+    min_lat = min(p[0] for p in points)
+    max_lat = max(p[0] for p in points)
+    min_lon = min(p[1] for p in points)
+    max_lon = max(p[1] for p in points)
+    
+    center_lat = (min_lat + max_lat) / 2
+    center_lon = (min_lon + max_lon) / 2
+    
+    # 格式化到固定小数位，避免浮点数精度问题
+    center_lat = float(f"{center_lat:.10f}")
+    center_lon = float(f"{center_lon:.10f}")
+    
+    return center_lat, center_lon
 
 def calculate_centroid(coordinates):
     """
@@ -505,6 +551,149 @@ def merge_osm_files(ref_root, ref_tree, target_root, target_tree):
     return merged_tree
 
 
+def add_vertical_passages_to_root(osm_root, start_node_id, start_way_id):
+    """
+    在合并后的OSM根元素中为电梯和楼梯添加垂直连通的passage。
+    逻辑基于 add_vertical_passages.py。
+    """
+    
+    created_nodes_list = []
+    created_ways_list = []
+    
+    next_node_id_counter = start_node_id
+    next_way_id_counter = start_way_id
+    
+    # 创建节点字典，用于快速查找
+    node_dict = {}
+    for node in osm_root.findall(".//node"):
+        node_dict[node.get('id')] = node
+    
+    # 按类型和楼层收集电梯和楼梯
+    vertical_transports = defaultdict(lambda: defaultdict(list))
+    
+    for way in osm_root.findall(".//way"):
+        area_type_tag_val = get_tag_value(way, 'osmAG:areaType')
+        level_tag_val = get_tag_value(way, 'level')
+        name_tag_val = get_tag_value(way, 'name')
+        
+        if area_type_tag_val and level_tag_val and name_tag_val:
+            if area_type_tag_val == 'elevator':
+                vertical_transports['elevator'][name_tag_val].append({
+                    'way_id': way.get('id'),
+                    'level': level_tag_val,
+                    'nodes': way.findall('nd'),
+                    'height': get_tag_value(way, 'height'),
+                    'way_element': way
+                })
+            elif area_type_tag_val == 'stairs':
+                vertical_transports['stairs'][name_tag_val].append({
+                    'way_id': way.get('id'),
+                    'level': level_tag_val,
+                    'nodes': way.findall('nd'),
+                    'height': get_tag_value(way, 'height'),
+                    'way_element': way
+                })
+
+    # 为每种垂直运输方式创建passage
+    for transport_type, name_groups in vertical_transports.items():
+        for name, instances in name_groups.items():
+            # 按楼层排序 (确保楼层是数值类型或可比较的字符串)
+            try:
+                sorted_instances = sorted(instances, key=lambda x: float(x['level']))
+            except ValueError:
+                print(f"警告: 无法按数值排序 {transport_type} '{name}' 的楼层，尝试按字符串排序。楼层: {[inst['level'] for inst in instances]}")
+                sorted_instances = sorted(instances, key=lambda x: x['level'])
+            
+            for i in range(len(sorted_instances) - 1):
+                lower = sorted_instances[i]
+                upper = sorted_instances[i+1]
+                
+                # 确保楼层确实不同，避免在同一楼层创建通道
+                if lower['level'] == upper['level']:
+                    continue
+
+                all_nodes_for_center = lower['nodes'] + upper['nodes'] # 使用两层形状的并集计算中心
+                center_lat, center_lon = calculate_polygon_center(all_nodes_for_center, node_dict)
+                
+                if center_lat is None or center_lon is None:
+                    print(f"警告: 无法计算 {transport_type} '{name}' 在楼层 {lower['level']}-{upper['level']} 间的中心点，跳过创建passage")
+                    continue
+                
+                # 创建新节点
+                lower_node_element = ET.Element('node')
+                lower_node_id_str = str(next_node_id_counter)
+                lower_node_element.set('id', lower_node_id_str)
+                lower_node_element.set('action', 'modify') # 保持与原脚本一致
+                lower_node_element.set('visible', 'true') # 保持与原脚本一致
+                lower_node_element.set('lat', str(center_lat))
+                lower_node_element.set('lon', str(center_lon))
+                ET.SubElement(lower_node_element, 'tag', k='level', v=lower['level'])
+                created_nodes_list.append(lower_node_element)
+                next_node_id_counter += 1
+                
+                upper_node_element = ET.Element('node')
+                upper_node_id_str = str(next_node_id_counter)
+                upper_node_element.set('id', upper_node_id_str)
+                upper_node_element.set('action', 'modify') # 保持与原脚本一致
+                upper_node_element.set('visible', 'true') # 保持与原脚本一致
+                upper_node_element.set('lat', str(center_lat))
+                upper_node_element.set('lon', str(center_lon))
+                ET.SubElement(upper_node_element, 'tag', k='level', v=upper['level'])
+                created_nodes_list.append(upper_node_element)
+                next_node_id_counter += 1
+                
+                # 创建连接passage (way)
+                passage_element = ET.Element('way')
+                passage_element.set('id', str(next_way_id_counter))
+                passage_element.set('action', 'modify') # 保持与原脚本一致
+                passage_element.set('visible', 'true') # 保持与原脚本一致
+                
+                ET.SubElement(passage_element, 'nd', ref=lower_node_id_str)
+                ET.SubElement(passage_element, 'nd', ref=upper_node_id_str)
+                
+                # 添加标签
+                if upper.get('height'):
+                    ET.SubElement(passage_element, 'tag', k='height', v=upper['height'])
+                ET.SubElement(passage_element, 'tag', k='level', v=upper['level']) # Passage通常标记为上层level
+                passage_name = f"{transport_type}_passage_{random.randint(1000, 9999)}"
+                ET.SubElement(passage_element, 'tag', k='name', v=passage_name)
+                ET.SubElement(passage_element, 'tag', k='osmAG:areaType', v='passage')
+                ET.SubElement(passage_element, 'tag', k='highway', v='footway')
+                ET.SubElement(passage_element, 'tag', k='indoor', v='yes')
+                
+                created_ways_list.append(passage_element)
+                next_way_id_counter += 1
+
+    # 将新创建的节点插入到XML树中，在所有way之前 (如果存在way)
+    # 这种插入方式是为了保持与原 add_vertical_passages.py 的行为一致
+    # 尽管对于ET来说，节点顺序在解析时通常不重要，只要ID能被解析
+    existing_way_elements = list(osm_root.findall('.//way'))
+    insert_before_index = -1
+
+    if existing_way_elements:
+        # 尝试找到第一个way元素在root直接子元素中的索引
+        first_way_in_root_children = None
+        for child_idx, child in enumerate(list(osm_root)):
+            if child.tag == 'way':
+                first_way_in_root_children = child
+                insert_before_index = child_idx
+                break
+    
+    if insert_before_index != -1:
+        for i, node_to_insert in enumerate(created_nodes_list):
+            osm_root.insert(insert_before_index + i, node_to_insert)
+    else:
+        # 如果没有way，或者root下没有直接的way子元素（不太可能对于标准OSM），则追加节点
+        for node_to_insert in created_nodes_list:
+            osm_root.append(node_to_insert)
+            
+    # 将新创建的passage way添加到root的末尾
+    for way_to_insert in created_ways_list:
+        osm_root.append(way_to_insert)
+
+    print(f"Added {len(created_nodes_list)} passage nodes and {len(created_ways_list)} passage ways.")
+
+
 def main():
     # 解析命令行参数
     parser = argparse.ArgumentParser(description='合并多张osmAG文件')
@@ -650,11 +839,161 @@ def main():
             ensure_version_attribute(relation)
             merged_root.append(copy.deepcopy(relation))
     
+    # 添加垂直通道
+    print("\nAdding vertical passages to the merged OSM file...")
+    current_max_ids = find_max_ids(ref_root) # ref_root is the merged root
+    start_node_id_passages = current_max_ids.get('node', 0) + 1
+    start_way_id_passages = current_max_ids.get('way', 0) + 1
+    add_vertical_passages_to_root(ref_root, start_node_id_passages, start_way_id_passages)
+
     # 保存合并后的OSM文件
-    save_osm_file(merged_tree, args.output)
-    
-    print(f"成功合并 {len(target_files)} 个OSM文件并保存到: {args.output}")
+    if not save_osm_file(ref_tree, args.output):
+        print("Failed to save the merged OSM file with passages.")
+        return
+
+    print(f"Successfully merged OSM files and added passages to: {args.output}")
 
 
 if __name__ == "__main__":
     main()
+
+    """
+    在合并后的OSM根元素中为电梯和楼梯添加垂直连通的passage。
+    逻辑基于 add_vertical_passages.py。
+    """
+    
+    created_nodes_list = []
+    created_ways_list = []
+    
+    next_node_id_counter = start_node_id
+    next_way_id_counter = start_way_id
+    
+    # 创建节点字典，用于快速查找
+    node_dict = {}
+    for node in osm_root.findall(".//node"):
+        node_dict[node.get('id')] = node
+    
+    # 按类型和楼层收集电梯和楼梯
+    vertical_transports = defaultdict(lambda: defaultdict(list))
+    
+    for way in osm_root.findall(".//way"):
+        area_type_tag_val = get_tag_value(way, 'osmAG:areaType')
+        level_tag_val = get_tag_value(way, 'level')
+        name_tag_val = get_tag_value(way, 'name')
+        
+        if area_type_tag_val and level_tag_val and name_tag_val:
+            if area_type_tag_val == 'elevator':
+                vertical_transports['elevator'][name_tag_val].append({
+                    'way_id': way.get('id'),
+                    'level': level_tag_val,
+                    'nodes': way.findall('nd'),
+                    'height': get_tag_value(way, 'height'),
+                    'way_element': way
+                })
+            elif area_type_tag_val == 'stairs':
+                vertical_transports['stairs'][name_tag_val].append({
+                    'way_id': way.get('id'),
+                    'level': level_tag_val,
+                    'nodes': way.findall('nd'),
+                    'height': get_tag_value(way, 'height'),
+                    'way_element': way
+                })
+
+    # 为每种垂直运输方式创建passage
+    for transport_type, name_groups in vertical_transports.items():
+        for name, instances in name_groups.items():
+            # 按楼层排序 (确保楼层是数值类型或可比较的字符串)
+            try:
+                sorted_instances = sorted(instances, key=lambda x: float(x['level']))
+            except ValueError:
+                print(f"警告: 无法按数值排序 {transport_type} '{name}' 的楼层，尝试按字符串排序。楼层: {[inst['level'] for inst in instances]}")
+                sorted_instances = sorted(instances, key=lambda x: x['level'])
+            
+            for i in range(len(sorted_instances) - 1):
+                lower = sorted_instances[i]
+                upper = sorted_instances[i+1]
+                
+                # 确保楼层确实不同，避免在同一楼层创建通道
+                if lower['level'] == upper['level']:
+                    continue
+
+                all_nodes_for_center = lower['nodes'] + upper['nodes'] # 使用两层形状的并集计算中心
+                center_lat, center_lon = calculate_polygon_center(all_nodes_for_center, node_dict)
+                
+                if center_lat is None or center_lon is None:
+                    print(f"警告: 无法计算 {transport_type} '{name}' 在楼层 {lower['level']}-{upper['level']} 间的中心点，跳过创建passage")
+                    continue
+                
+                # 创建新节点
+                lower_node_element = ET.Element('node')
+                lower_node_id_str = str(next_node_id_counter)
+                lower_node_element.set('id', lower_node_id_str)
+                lower_node_element.set('action', 'modify') # 保持与原脚本一致
+                lower_node_element.set('visible', 'true') # 保持与原脚本一致
+                lower_node_element.set('lat', str(center_lat))
+                lower_node_element.set('lon', str(center_lon))
+                ET.SubElement(lower_node_element, 'tag', k='level', v=lower['level'])
+                created_nodes_list.append(lower_node_element)
+                next_node_id_counter += 1
+                
+                upper_node_element = ET.Element('node')
+                upper_node_id_str = str(next_node_id_counter)
+                upper_node_element.set('id', upper_node_id_str)
+                upper_node_element.set('action', 'modify') # 保持与原脚本一致
+                upper_node_element.set('visible', 'true') # 保持与原脚本一致
+                upper_node_element.set('lat', str(center_lat))
+                upper_node_element.set('lon', str(center_lon))
+                ET.SubElement(upper_node_element, 'tag', k='level', v=upper['level'])
+                created_nodes_list.append(upper_node_element)
+                next_node_id_counter += 1
+                
+                # 创建连接passage (way)
+                passage_element = ET.Element('way')
+                passage_element.set('id', str(next_way_id_counter))
+                passage_element.set('action', 'modify') # 保持与原脚本一致
+                passage_element.set('visible', 'true') # 保持与原脚本一致
+                
+                ET.SubElement(passage_element, 'nd', ref=lower_node_id_str)
+                ET.SubElement(passage_element, 'nd', ref=upper_node_id_str)
+                
+                # 添加标签
+                if upper.get('height'):
+                    ET.SubElement(passage_element, 'tag', k='height', v=upper['height'])
+                ET.SubElement(passage_element, 'tag', k='level', v=upper['level']) # Passage通常标记为上层level
+                passage_name = f"{transport_type}_passage_{random.randint(1000, 9999)}"
+                ET.SubElement(passage_element, 'tag', k='name', v=passage_name)
+                ET.SubElement(passage_element, 'tag', k='osmAG:areaType', v='passage')
+                ET.SubElement(passage_element, 'tag', k='highway', v='footway')
+                ET.SubElement(passage_element, 'tag', k='indoor', v='yes')
+                
+                created_ways_list.append(passage_element)
+                next_way_id_counter += 1
+
+    # 将新创建的节点插入到XML树中，在所有way之前 (如果存在way)
+    # 这种插入方式是为了保持与原 add_vertical_passages.py 的行为一致
+    # 尽管对于ET来说，节点顺序在解析时通常不重要，只要ID能被解析
+    existing_way_elements = list(osm_root.findall('.//way'))
+    insert_before_index = -1
+
+    if existing_way_elements:
+        # 尝试找到第一个way元素在root直接子元素中的索引
+        first_way_in_root_children = None
+        for child_idx, child in enumerate(list(osm_root)):
+            if child.tag == 'way':
+                first_way_in_root_children = child
+                insert_before_index = child_idx
+                break
+    
+    if insert_before_index != -1:
+        for i, node_to_insert in enumerate(created_nodes_list):
+            osm_root.insert(insert_before_index + i, node_to_insert)
+    else:
+        # 如果没有way，或者root下没有直接的way子元素（不太可能对于标准OSM），则追加节点
+        for node_to_insert in created_nodes_list:
+            osm_root.append(node_to_insert)
+            
+    # 将新创建的passage way添加到root的末尾
+    for way_to_insert in created_ways_list:
+        osm_root.append(way_to_insert)
+
+    print(f"Added {len(created_nodes_list)} passage nodes and {len(created_ways_list)} passage ways.")
