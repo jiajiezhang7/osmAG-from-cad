@@ -1,0 +1,396 @@
+{
+  "statistics": {
+    "total_nodes": 2135,
+    "total_ways": 221,
+    "total_areas": 98,
+    "total_passages": 113,
+    "total_vertical_transport": 0,
+    "total_cross_level_passages": 0,
+    "areas_by_level": {
+      "0": 2,
+      "2": 96
+    },
+    "vertical_transport_by_level": {},
+    "semantic_name_patterns": {
+      "structure": 6,
+      "passage": 113,
+      "area": 92
+    },
+    "errors": 28,
+    "warnings": 4,
+    "infos": 0,
+    "avg_nodes_per_area_by_level": {
+      "0": 88.0,
+      "2": 22.708333333333332
+    },
+    "area_connections": {
+      "E1d-F2-COR-03": 7,
+      "E1d-F2-10": 1,
+      "E1d-F2-04": 1,
+      "E1d-F2-COR-01": 16,
+      "E1d-F2-15": 2,
+      "E1d-F2-SE": 1,
+      "E1d-F2-09": 1,
+      "E1d-F2-05": 1,
+      "E1d-F2-WR": 1,
+      "E1d-F2-COR-02": 6,
+      "E1d-F2-14": 2,
+      "E1d-F2-12": 1,
+      "E1d-F2-03": 1,
+      "E1d-F2-06": 1,
+      "E1-ST-08": 1,
+      "E1d-F2-11": 1,
+      "E1d-F2-MR": 1,
+      "E2-P4": 1,
+      "E1d-F2-CL-01": 1,
+      "E1d-F2-02": 1,
+      "E1d-F2-13": 1,
+      "E2-P3": 1,
+      "E1d-F2-PF-01": 1,
+      "E1d-F2-08": 1,
+      "E1d-F2-WE": 1,
+      "E1-ST-09": 1,
+      "E1b-F2-COR-01": 14,
+      "E1b-F2-06": 1,
+      "E1b-F2-DR": 1,
+      "E1b-F2-COR-03": 9,
+      "E1b-F2-COR-02": 2,
+      "E1b-F2-10": 1,
+      "E1b-F2-03": 1,
+      "E1b-F2-04": 1,
+      "E1b-F2-CL-01": 1,
+      "E1b-F2-09": 1,
+      "E1b-F2-12": 1,
+      "E1b-F2-MR": 1,
+      "E1b-F2-COR-04": 2,
+      "E1b-F2-11": 1,
+      "E1-ST-05": 1,
+      "E1b-F2-07": 1,
+      "E1b-F2-WR": 1,
+      "E1-F2-PF-01": 2,
+      "E1-P2": 2,
+      "E1b-F2-02": 1,
+      "E1b-F2-05": 1,
+      "E1b-F2-SHOWER": 1,
+      "E1b-F2-08": 1,
+      "E1b-F2-01": 1,
+      "E1a-F2-COR-02": 22,
+      "E1a-F2-02": 1,
+      "E1c-F2-COR-01": 6,
+      "E1-S1": 1,
+      "E1a-F2-COR-03": 4,
+      "E1a-F2-14": 1,
+      "E1a-F2-15": 1,
+      "E1a-F2-05": 1,
+      "E1a-F2-01": 1,
+      "E1a-F2-07": 1,
+      "E1c-F2-COR-03": 2,
+      "E1a-F2-WR": 1,
+      "E1a-F2-PF-01": 1,
+      "E1a-F2-COR-01": 6,
+      "E1c-F2-13": 1,
+      "E1a-F2-08": 1,
+      "E1a-F2-17": 1,
+      "E1c-F2-11": 1,
+      "E1-P1": 1,
+      "E1a-F2-WE": 1,
+      "E1a-F2-03": 1,
+      "E1-ST-03": 1,
+      "E1a-F2-06": 1,
+      "E1a-F2-MR": 1,
+      "E1a-F2-19": 1,
+      "E1-ST-02": 2,
+      "E1c-F2-10": 1,
+      "E1a-F2-SE": 1,
+      "E1c-F2-12": 1,
+      "E1a-F2-09": 1,
+      "E1c-F2-COR-02": 6,
+      "E1a-F2-16": 1,
+      "E1a-F2-04": 1,
+      "E1a-F2-28": 1,
+      "E1a-F2-18": 1,
+      "E1a-F2-QR": 1,
+      "E1c-F2-COR-04": 7,
+      "E1-ST-01": 2,
+      "E1c-F2-26": 1,
+      "E1c-F2-27": 1,
+      "E1c-F2-20": 1,
+      "E1c-F2-22": 1,
+      "E1c-F2-23": 1,
+      "E1c-F2-21": 1,
+      "E1c-F2-AA": 1,
+      "E1c-F2-24": 1,
+      "E1c-F2-25": 1,
+      "E1a-F2-PF1": 4,
+      "E1a-F2-PF2": 2,
+      "E1a-F2-PF3": 2
+    },
+    "avg_connections_per_area": 2.06
+  },
+  "results": [
+    {
+      "level": "ERROR",
+      "category": "SEMANTIC_REFERENCE",
+      "message": "通道引用了不存在的目标区域: E1-ST-08",
+      "element_id": "-189685",
+      "line_number": null,
+      "details": {}
+    },
+    {
+      "level": "ERROR",
+      "category": "SEMANTIC_REFERENCE",
+      "message": "通道引用了不存在的起始区域: E2-P4",
+      "element_id": "-189697",
+      "line_number": null,
+      "details": {}
+    },
+    {
+      "level": "ERROR",
+      "category": "SEMANTIC_REFERENCE",
+      "message": "通道引用了不存在的起始区域: E2-P3",
+      "element_id": "-189716",
+      "line_number": null,
+      "details": {}
+    },
+    {
+      "level": "ERROR",
+      "category": "SEMANTIC_REFERENCE",
+      "message": "通道引用了不存在的起始区域: E1-ST-09",
+      "element_id": "-190514",
+      "line_number": null,
+      "details": {}
+    },
+    {
+      "level": "ERROR",
+      "category": "SEMANTIC_REFERENCE",
+      "message": "通道引用了不存在的起始区域: E1-ST-05",
+      "element_id": "-191834",
+      "line_number": null,
+      "details": {}
+    },
+    {
+      "level": "ERROR",
+      "category": "SEMANTIC_REFERENCE",
+      "message": "通道引用了不存在的起始区域: E1-F2-PF-01",
+      "element_id": "-191842",
+      "line_number": null,
+      "details": {}
+    },
+    {
+      "level": "ERROR",
+      "category": "SEMANTIC_REFERENCE",
+      "message": "通道引用了不存在的目标区域: E1-P2",
+      "element_id": "-191842",
+      "line_number": null,
+      "details": {}
+    },
+    {
+      "level": "ERROR",
+      "category": "SEMANTIC_REFERENCE",
+      "message": "通道引用了不存在的目标区域: E1-P2",
+      "element_id": "-191844",
+      "line_number": null,
+      "details": {}
+    },
+    {
+      "level": "ERROR",
+      "category": "SEMANTIC_REFERENCE",
+      "message": "通道引用了不存在的起始区域: E1-F2-PF-01",
+      "element_id": "-192462",
+      "line_number": null,
+      "details": {}
+    },
+    {
+      "level": "ERROR",
+      "category": "SEMANTIC_REFERENCE",
+      "message": "通道引用了不存在的目标区域: E1-S1",
+      "element_id": "-192821",
+      "line_number": null,
+      "details": {}
+    },
+    {
+      "level": "ERROR",
+      "category": "SEMANTIC_REFERENCE",
+      "message": "通道引用了不存在的目标区域: E1c-F2-13",
+      "element_id": "-192840",
+      "line_number": null,
+      "details": {}
+    },
+    {
+      "level": "ERROR",
+      "category": "SEMANTIC_REFERENCE",
+      "message": "通道引用了不存在的目标区域: E1c-F2-11",
+      "element_id": "-192847",
+      "line_number": null,
+      "details": {}
+    },
+    {
+      "level": "ERROR",
+      "category": "SEMANTIC_REFERENCE",
+      "message": "通道引用了不存在的目标区域: E1-P1",
+      "element_id": "-192848",
+      "line_number": null,
+      "details": {}
+    },
+    {
+      "level": "ERROR",
+      "category": "SEMANTIC_REFERENCE",
+      "message": "通道引用了不存在的起始区域: E1-ST-03",
+      "element_id": "-192859",
+      "line_number": null,
+      "details": {}
+    },
+    {
+      "level": "ERROR",
+      "category": "SEMANTIC_REFERENCE",
+      "message": "通道引用了不存在的起始区域: E1-ST-02",
+      "element_id": "-192865",
+      "line_number": null,
+      "details": {}
+    },
+    {
+      "level": "ERROR",
+      "category": "SEMANTIC_REFERENCE",
+      "message": "通道引用了不存在的目标区域: E1c-F2-10",
+      "element_id": "-192867",
+      "line_number": null,
+      "details": {}
+    },
+    {
+      "level": "ERROR",
+      "category": "SEMANTIC_REFERENCE",
+      "message": "通道引用了不存在的目标区域: E1c-F2-12",
+      "element_id": "-192873",
+      "line_number": null,
+      "details": {}
+    },
+    {
+      "level": "ERROR",
+      "category": "SEMANTIC_REFERENCE",
+      "message": "通道引用了不存在的起始区域: E1-ST-02",
+      "element_id": "-192877",
+      "line_number": null,
+      "details": {}
+    },
+    {
+      "level": "ERROR",
+      "category": "SEMANTIC_REFERENCE",
+      "message": "通道引用了不存在的起始区域: E1-ST-01",
+      "element_id": "-195294",
+      "line_number": null,
+      "details": {}
+    },
+    {
+      "level": "ERROR",
+      "category": "SEMANTIC_REFERENCE",
+      "message": "通道引用了不存在的起始区域: E1a-F2-PF1",
+      "element_id": "-195366",
+      "line_number": null,
+      "details": {}
+    },
+    {
+      "level": "ERROR",
+      "category": "SEMANTIC_REFERENCE",
+      "message": "通道引用了不存在的起始区域: E1a-F2-PF2",
+      "element_id": "-196006",
+      "line_number": null,
+      "details": {}
+    },
+    {
+      "level": "ERROR",
+      "category": "SEMANTIC_REFERENCE",
+      "message": "通道引用了不存在的目标区域: E1a-F2-PF1",
+      "element_id": "-196006",
+      "line_number": null,
+      "details": {}
+    },
+    {
+      "level": "ERROR",
+      "category": "SEMANTIC_REFERENCE",
+      "message": "通道引用了不存在的起始区域: E1a-F2-PF2",
+      "element_id": "-196007",
+      "line_number": null,
+      "details": {}
+    },
+    {
+      "level": "ERROR",
+      "category": "SEMANTIC_REFERENCE",
+      "message": "通道引用了不存在的目标区域: E1a-F2-PF3",
+      "element_id": "-196007",
+      "line_number": null,
+      "details": {}
+    },
+    {
+      "level": "ERROR",
+      "category": "SEMANTIC_REFERENCE",
+      "message": "通道引用了不存在的起始区域: E1a-F2-PF1",
+      "element_id": "-196009",
+      "line_number": null,
+      "details": {}
+    },
+    {
+      "level": "ERROR",
+      "category": "SEMANTIC_REFERENCE",
+      "message": "通道引用了不存在的目标区域: E1a-F2-PF3",
+      "element_id": "-196009",
+      "line_number": null,
+      "details": {}
+    },
+    {
+      "level": "ERROR",
+      "category": "SEMANTIC_REFERENCE",
+      "message": "通道引用了不存在的起始区域: E1-ST-01",
+      "element_id": "-196017",
+      "line_number": null,
+      "details": {}
+    },
+    {
+      "level": "ERROR",
+      "category": "SEMANTIC_REFERENCE",
+      "message": "通道引用了不存在的目标区域: E1a-F2-PF1",
+      "element_id": "-196017",
+      "line_number": null,
+      "details": {}
+    },
+    {
+      "level": "WARNING",
+      "category": "LEVEL_CONSISTENCY",
+      "message": "子区域层级(2)与父区域层级(0)不一致",
+      "element_id": "-188662",
+      "line_number": null,
+      "details": {}
+    },
+    {
+      "level": "WARNING",
+      "category": "LEVEL_CONSISTENCY",
+      "message": "子区域层级(2)与父区域层级(0)不一致",
+      "element_id": "-189731",
+      "line_number": null,
+      "details": {}
+    },
+    {
+      "level": "WARNING",
+      "category": "LEVEL_CONSISTENCY",
+      "message": "子区域层级(2)与父区域层级(0)不一致",
+      "element_id": "-194291",
+      "line_number": null,
+      "details": {}
+    },
+    {
+      "level": "WARNING",
+      "category": "LEVEL_CONSISTENCY",
+      "message": "子区域层级(2)与父区域层级(0)不一致",
+      "element_id": "-195357",
+      "line_number": null,
+      "details": {}
+    }
+  ],
+  "summary": {
+    "total_issues": 32,
+    "errors": 28,
+    "warnings": 4,
+    "infos": 0,
+    "passed": false,
+    "semantic_version": true
+  }
+}
