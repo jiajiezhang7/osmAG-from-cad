@@ -337,6 +337,9 @@ def visualize_matching(rooms_data, text_data, mapping_result, output_path):
     # 设置等比例坐标，确保横纵比例一致
     ax.set_aspect('equal')
     
+    # 上下翻转Y轴，确保与其他可视化图像方向一致
+    ax.invert_yaxis()
+    
     # 保存图像
     plt.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches='tight')

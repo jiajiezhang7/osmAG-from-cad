@@ -188,8 +188,8 @@ def extract_room_polygons(osm_root, config=None, padding_ratio=0.03):
             root_pixel_x = config['root_node'].get('pixel_x', root_pixel_x)
             root_pixel_y = config['root_node'].get('pixel_y', root_pixel_y)
 
-        if 'png_dimensions' in config and 'resolution' in config['png_dimensions']:
-            resolution = config['png_dimensions'].get('resolution', resolution)
+        if 'map_preprocessing' in config and 'resolution' in config['map_preprocessing']:
+            resolution = config['map_preprocessing'].get('resolution', resolution)
             
         # 从配置中读取边缘空隙比例
         if 'coordinate_conversion' in config and 'padding_ratio' in config['coordinate_conversion']:

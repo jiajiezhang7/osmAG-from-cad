@@ -66,8 +66,25 @@ int main(int argc, char *argv[]) {
     // 参数解析和配置初始化
     if (argc < 2) {
         cout << "Usage " << argv[0]
-             << " RGBimage.png <resolution door_wide corridor_wide noise_precentage(0-100) record_time(0 or 1)>"
-             << endl;
+             << " RGBimage.png [options]" << endl;
+        cout << "Options:" << endl;
+        cout << "  --resolution <value>        Map resolution (meters/pixel)" << endl;
+        cout << "  --door-width <value>        Door width" << endl;
+        cout << "  --corridor-width <value>    Corridor width" << endl;
+        cout << "  --noise-percent <value>     Noise percentage (0-100)" << endl;
+
+        cout << "  --root-lat <value>          Root node latitude" << endl;
+        cout << "  --root-lon <value>          Root node longitude" << endl;
+        cout << "  --root-pixel-x <value>      Root node pixel X position" << endl;
+        cout << "  --root-pixel-y <value>      Root node pixel Y position" << endl;
+        cout << "  --simplify-tolerance <value> Polygon simplification tolerance" << endl;
+        cout << "  --spike-angle <value>       Spike removal angle threshold" << endl;
+        cout << "  --spike-distance <value>    Spike removal distance threshold" << endl;
+        cout << "  --min-room-area <value>     Minimum room area for filtering" << endl;
+        cout << "  --clean-input <0|1>         Enable input cleaning" << endl;
+        cout << "  --remove-furniture <0|1>    Enable furniture removal" << endl;
+        cout << "  --record-time               Enable time recording" << endl;
+        cout << "Legacy format: " << argv[0] << " RGBimage.png <resolution door_wide corridor_wide noise_precentage(0-100) record_time(0 or 1)>" << endl;
         return 255;
     }
     
@@ -80,12 +97,19 @@ int main(int argc, char *argv[]) {
     bool clean_input = false;
     bool remove_furniture = true;
     
+    // 坐标参数
+    double root_lat = -1;
+    double root_lon = -1;
+    double root_pixel_x = -1;
+    double root_pixel_y = -1;
+    
     // 多边形处理参数
     bool simplify_enabled = true;
     double simplify_tolerance = 0.05;
     bool spike_removal_enabled = true;
     double spike_angle_threshold = 60.0;
     double spike_distance_threshold = 0.30;
+    double min_room_area = -1;
     
     // 尝试加载参数文件
     try {
@@ -105,6 +129,24 @@ int main(int argc, char *argv[]) {
             remove_furniture = config["map_preprocessing"]["remove_furniture"].as<bool>();
         }
         
+
+        
+        // 根节点参数
+        if (config["root_node"]) {
+            if (config["root_node"]["latitude"]) {
+                root_lat = config["root_node"]["latitude"].as<double>();
+            }
+            if (config["root_node"]["longitude"]) {
+                root_lon = config["root_node"]["longitude"].as<double>();
+            }
+            if (config["root_node"]["pixel_x"]) {
+                root_pixel_x = config["root_node"]["pixel_x"].as<double>();
+            }
+            if (config["root_node"]["pixel_y"]) {
+                root_pixel_y = config["root_node"]["pixel_y"].as<double>();
+            }
+        }
+        
         // 多边形处理参数
         if (config["polygon_processing"]["simplify"]) {
             simplify_enabled = config["polygon_processing"]["simplify"]["enabled"].as<bool>();
@@ -115,6 +157,12 @@ int main(int argc, char *argv[]) {
             spike_removal_enabled = config["polygon_processing"]["spike_removal"]["enabled"].as<bool>();
             spike_angle_threshold = config["polygon_processing"]["spike_removal"]["angle_threshold"].as<double>();
             spike_distance_threshold = config["polygon_processing"]["spike_removal"]["distance_threshold"].as<double>();
+        }
+        
+        if (config["polygon_processing"]["small_room_filter"]) {
+            if (config["polygon_processing"]["small_room_filter"]["min_area"]) {
+                min_room_area = config["polygon_processing"]["small_room_filter"]["min_area"].as<double>();
+            }
         }
         
         std::cout << "成功加载参数文件" << std::endl;
@@ -130,20 +178,67 @@ int main(int argc, char *argv[]) {
     // 创建输出目录
     fs::create_directory(output_dir);
 
-    // 从命令行读取参数（命令行参数优先级高于配置文件）
-    if (argc > 2) {
-        res = atof(argv[2]);
-        if (argc > 4) {
-            door_wide = atof(argv[3]) == -1 ? 1.15 : atof(argv[3]);
-            corridor_wide = atof(argv[4]) == -1 ? 1.35 : atof(argv[4]);
+    // 新的命令行参数解析 (支持 --parameter value 格式)
+    for (int i = 2; i < argc; i++) {
+        string arg = argv[i];
+        
+        if (arg == "--resolution" && i + 1 < argc) {
+            res = atof(argv[++i]);
+        } else if (arg == "--door-width" && i + 1 < argc) {
+            door_wide = atof(argv[++i]);
+        } else if (arg == "--corridor-width" && i + 1 < argc) {
+            corridor_wide = atof(argv[++i]);
+        } else if (arg == "--noise-percent" && i + 1 < argc) {
+            noise_percent = atof(argv[++i]);
 
-            if (argc > 5) {
-                noise_percent = atof(argv[5]);
-                if (argc > 6)
-                    record_time = true;
+        } else if (arg == "--root-lat" && i + 1 < argc) {
+            root_lat = atof(argv[++i]);
+        } else if (arg == "--root-lon" && i + 1 < argc) {
+            root_lon = atof(argv[++i]);
+        } else if (arg == "--root-pixel-x" && i + 1 < argc) {
+            root_pixel_x = atof(argv[++i]);
+        } else if (arg == "--root-pixel-y" && i + 1 < argc) {
+            root_pixel_y = atof(argv[++i]);
+        } else if (arg == "--simplify-tolerance" && i + 1 < argc) {
+            simplify_tolerance = atof(argv[++i]);
+        } else if (arg == "--spike-angle" && i + 1 < argc) {
+            spike_angle_threshold = atof(argv[++i]);
+        } else if (arg == "--spike-distance" && i + 1 < argc) {
+            spike_distance_threshold = atof(argv[++i]);
+        } else if (arg == "--min-room-area" && i + 1 < argc) {
+            min_room_area = atof(argv[++i]);
+        } else if (arg == "--clean-input" && i + 1 < argc) {
+            clean_input = atoi(argv[++i]) != 0;
+        } else if (arg == "--remove-furniture" && i + 1 < argc) {
+            remove_furniture = atoi(argv[++i]) != 0;
+        } else if (arg == "--record-time") {
+            record_time = true;
+        } else if (i == 2 && arg.find("--") != 0) {
+            // 兼容旧格式的位置参数
+            res = atof(argv[2]);
+            if (argc > 4) {
+                door_wide = atof(argv[3]) == -1 ? 1.15 : atof(argv[3]);
+                corridor_wide = atof(argv[4]) == -1 ? 1.35 : atof(argv[4]);
+
+                if (argc > 5) {
+                    noise_percent = atof(argv[5]);
+                    if (argc > 6)
+                        record_time = true;
+                }
             }
+            break; // 如果使用旧格式，跳出循环
         }
     }
+    
+    // 输出当前使用的参数
+    cout << "=== 当前使用的参数 ===" << endl;
+    cout << "分辨率: " << res << endl;
+    cout << "门宽: " << door_wide << endl;
+    cout << "廊宽: " << corridor_wide << endl;
+    cout << "噪声百分比: " << noise_percent << endl;
+    if (root_lat > -1) cout << "根节点纬度: " << root_lat << endl;
+    if (root_lon > -1) cout << "根节点经度: " << root_lon << endl;
+    cout << "===================" << endl;
 
     // 第0步：配置参数设定
     sConfig = new VoriConfig();

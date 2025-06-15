@@ -210,8 +210,7 @@ void exportToOsmAG(AreaGraph* areaGraph,
     // root_node 在 PNG 图像中的像素位置
     double root_pixel_x = 3804.0;  // 根据测量的 root_node 像素 x 坐标
     double root_pixel_y = 2801.0;  // 根据测量的 root_node 像素 y 坐标
-    double png_width = 4000.0;     // PNG 图像宽度
-    double png_height = 3360.0;    // PNG 图像高度
+
     double resolution = 0.044;     // PNG 图像的分辨率（米/像素）
 
     try {
@@ -227,16 +226,10 @@ void exportToOsmAG(AreaGraph* areaGraph,
             if (params.params["root_node"]["pixel_y"]) {
                 root_pixel_y = params.params["root_node"]["pixel_y"].as<double>();
             }
-            if (params.params["png_dimensions"]) {
-                if (params.params["png_dimensions"]["width"]) {
-                    png_width = params.params["png_dimensions"]["width"].as<double>();
-                }
-                if (params.params["png_dimensions"]["height"]) {
-                    png_height = params.params["png_dimensions"]["height"].as<double>();
-                }
-                if (params.params["png_dimensions"]["resolution"]) {
-                    resolution = params.params["png_dimensions"]["resolution"].as<double>();
-                }
+        }
+        if (params.params["map_preprocessing"]) {
+            if (params.params["map_preprocessing"]["resolution"]) {
+                resolution = params.params["map_preprocessing"]["resolution"].as<double>();
             }
         }
     } catch (const std::exception& e) {
@@ -634,6 +627,8 @@ void exportToOsmAG(AreaGraph* areaGraph,
         osmFile << "    <tag k='osmAG:type' v='passage' />\n";
         osmFile << "    <tag k='level' v='" << level << "' />\n";
         osmFile << "    <tag k='height' v='" << height << "' />\n";
+        osmFile << "    <tag k='indoor' v='door' />\n";
+        osmFile << "    <tag k='door' v='yes' />\n";
         osmFile << "  </way>\n";
     }
 
