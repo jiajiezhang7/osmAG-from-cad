@@ -225,7 +225,7 @@ def visualize_matching(rooms_data, text_data, mapping_result, output_path):
                    line_style, color=line_color, linewidth=0.5, alpha=0.7)
             
             # 绘制文本
-            fontsize = 6  # 减小字体大小
+            fontsize = 10  # 增大字体大小以提高可读性
             
             # 计算文本边界框
             text_width = len(text) * fontsize * 0.6
@@ -287,7 +287,7 @@ def visualize_matching(rooms_data, text_data, mapping_result, output_path):
         ax.plot(x, y, 'ro', markersize=3)  # 红色点表示文本位置
         
         # 计算文本边界框的初始位置
-        fontsize = 6  # 减小字体大小
+        fontsize = 8  # 增大字体大小以提高可读性
         text_width = len(text) * fontsize * 0.6
         text_height = fontsize * 1.2
         
@@ -322,18 +322,18 @@ def visualize_matching(rooms_data, text_data, mapping_result, output_path):
     # 添加图例
     from matplotlib.lines import Line2D
     legend_elements = [
-        Line2D([0], [0], color='green', linestyle='-', lw=2, label='Inside Match'),
-        Line2D([0], [0], color='blue', linestyle='--', lw=2, label='Nearby Match'),
-        Line2D([0], [0], marker='o', color='w', markerfacecolor='r', markersize=6, label='Text Position'),
-        Line2D([0], [0], marker='x', color='blue', markersize=6, label='Room Center'),
-        Line2D([0], [0], marker='*', color='purple', markersize=8, label='Merged Text'),
+        Line2D([0], [0], color='green', linestyle='-', lw=4, label='Inside Match'),
+        Line2D([0], [0], color='blue', linestyle='--', lw=4, label='Nearby Match'),
+        Line2D([0], [0], marker='o', color='w', markerfacecolor='r', markersize=12, label='Text Position'),
+        Line2D([0], [0], marker='x', color='blue', markersize=12, label='Room Center'),
+        Line2D([0], [0], marker='*', color='purple', markersize=16, label='Merged Text'),
     ]
-    ax.legend(handles=legend_elements, loc='upper right')
+    ax.legend(handles=legend_elements, loc='upper right', fontsize=16, markerscale=1.5, frameon=True, fancybox=True, shadow=True)
 
     # 添加标题和轴标签
-    ax.set_title('Room Polygons and Text Matching Visualization')
-    ax.set_xlabel('Pixel X')
-    ax.set_ylabel('Pixel Y')
+    ax.set_title('Room Polygons and Text Matching Visualization', fontsize=18)
+    ax.set_xlabel('Pixel X', fontsize=14)
+    ax.set_ylabel('Pixel Y', fontsize=14)
     
     # 设置等比例坐标，确保横纵比例一致
     ax.set_aspect('equal')
