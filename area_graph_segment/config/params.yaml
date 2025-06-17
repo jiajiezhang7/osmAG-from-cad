@@ -2,7 +2,7 @@
 map_preprocessing:
   clean_input: false  # 是否对输入图片进行清理
   resolution: 0.044    # 地图分辨率（根据计算得到 - SIST：廊宽度2.4m， 54个像素， 2.4/54 = 0.044）
-  door_width: 4    # 门的宽度   #SIST:2.8 - res=0.05
+  door_width: 2.8    # 门的宽度   #SIST:2.8 - res=0.05
   corridor_width: 8 # 走廊宽度
   noise_percent: 1.5   # 噪声百分比
   remove_furniture: true  # 是否执行家具移除

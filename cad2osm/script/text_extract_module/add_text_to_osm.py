@@ -95,7 +95,8 @@ def visualize_matching(rooms_data, text_data, mapping_result, output_path):
     for room in rooms_data:
         room_id = room['id']
         # 生成更深的颜色，减小RGB值的范围
-        room_colors[room_id] = np.random.uniform(0.1, 0.7, 3)  # 随机RGB颜色，范围更小使颜色更深
+        # 生成与 Qt QColor(rand()%255) 一致的随机色调（0~1 归一化）
+        room_colors[room_id] = np.random.rand(3)  # 随机RGB颜色，0~1 全范围
 
     # 绘制所有房间多边形
     for room in rooms_data:
