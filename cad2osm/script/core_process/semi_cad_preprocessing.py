@@ -96,6 +96,39 @@ class FilteredDxfToPngConverter:
             self.logger.error(f"SVG转换PNG失败: {str(e)}")
             return False
 
+    def dxf_to_svg(self, input_file, output_file, resolution=4000, padding_ratio=0.03):
+        """为GUI提供的DXF转SVG方法，支持自定义分辨率和填充比例"""
+        self.logger.info(f"DXF转SVG - {os.path.basename(input_file)}, 分辨率: {resolution}, 填充比例: {padding_ratio}")
+        try:
+            success, message = dxf_to_svg(input_file, output_file, resolution, self.config)
+            if success:
+                self.logger.info(f"DXF转换SVG成功: {message}")
+                return True
+            else:
+                self.logger.error(f"DXF转换SVG失败: {message}")
+                return False
+        except Exception as e:
+            self.logger.error(f"DXF转换SVG异常: {str(e)}")
+            return False
+
+    def svg_to_png(self, input_file, output_file, line_thickness=1):
+        """为GUI提供的SVG转PNG方法，支持自定义线条粗细"""
+        self.logger.info(f"SVG转PNG - {os.path.basename(input_file)}, 线条粗细: {line_thickness}")
+        try:
+            target_output_size = (4000, 4000)  # 默认目标PNG尺寸
+
+            grid = svg_to_occupancy_grid(
+                input_file,
+                output_size=target_output_size,
+                line_thickness=line_thickness
+            )
+            save_occupancy_grid(grid, output_file)
+            self.logger.info(f"SVG转换PNG成功: {output_file}")
+            return True
+        except Exception as e:
+            self.logger.error(f"SVG转换PNG失败: {str(e)}")
+            return False
+
     def process_file(self, dxf_file, output_dir):
         """处理单个filtered_dxf.dxf文件的完整流程"""
         filename = os.path.basename(dxf_file)
