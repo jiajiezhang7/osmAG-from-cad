@@ -384,13 +384,13 @@ def save_occupancy_grid(occupancy_grid, output_path):
 # 使用示例
 if __name__ == "__main__":
     # --- 用户可修改路径 ---
-    input_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/img/svg_manual_filter/" # 输入 SVG 文件夹
-    output_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/img/png_manual_filter/" # 输出 PNG 文件夹
+    input_dir = "/home/jay/AGSeg_ws/AGSeg/good-res/Universita-pianta-02/" # 输入 SVG 文件夹
+    output_dir = "/home/jay/AGSeg_ws/AGSeg/good-res/Universita-pianta-02/" # 输出 PNG 文件夹
     target_output_size = (4000, 4000) # 默认目标 PNG 尺寸（当bounds.json不存在时使用）
     target_line_thickness = 1        # 输出 PNG 中的线条粗细 (1表示保持原样)
     
     # 墙壁填充算法参数
-    enable_wall_filling = False       # 是否启用墙壁填充
+    enable_wall_filling = True       # 是否启用墙壁填充
     wall_gap_size = 'medium'        # 墙壁空隙大小: 'small', 'medium', 'large'
     wall_min_area = 100             # 最小连通区域面积
     # --------------------
