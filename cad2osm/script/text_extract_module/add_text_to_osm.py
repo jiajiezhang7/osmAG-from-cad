@@ -350,7 +350,7 @@ def visualize_matching(rooms_data, text_data, mapping_result, output_path):
 
 def update_osm_tree(osm_tree, matches):
     """
-    在内存中更新OSM XML树的房间名称
+    在内存中更新OSM XML树的房间名称，并同时更新相关passage的osmAG:from和osmAG:to标签
 
     参数:
         osm_tree: ElementTree对象
@@ -362,6 +362,9 @@ def update_osm_tree(osm_tree, matches):
     root = osm_tree.getroot()
     updated_count = 0
     updated_ids = set()
+    
+    # 记录房间名称的变化，用于更新passage
+    room_name_changes = {}  # {room_id: {'old_name': old_name, 'new_name': new_name}}
 
     # 遍历所有way元素
     for way in root.findall('.//way'):
@@ -435,16 +438,21 @@ def update_osm_tree(osm_tree, matches):
             if target_text:
                 # 查找或创建name标签
                 name_tag = None
+                old_name = None
                 for tag in way.findall('./tag'):
                     if tag.get('k') == 'name':
                         name_tag = tag
+                        old_name = tag.get('v')
                         break
 
                 # 如果找到name标签，更新其值（如果不同）
                 if name_tag is not None:
                     if name_tag.get('v') != target_text:
                         print(f"Updating name for room {way_id}: '{name_tag.get('v')}' -> '{target_text}'")
+                        old_name = name_tag.get('v')
                         name_tag.set('v', target_text)
+                        # 记录房间名称变化
+                        room_name_changes[way_id] = {'old_name': old_name, 'new_name': target_text}
                         if way_id not in updated_ids:
                              updated_count += 1
                              updated_ids.add(way_id)
@@ -454,14 +462,56 @@ def update_osm_tree(osm_tree, matches):
                     new_tag = ET.SubElement(way, 'tag')
                     new_tag.set('k', 'name')
                     new_tag.set('v', target_text)
+                    # 记录房间名称变化（从无到有）
+                    room_name_changes[way_id] = {'old_name': old_name, 'new_name': target_text}
                     if way_id not in updated_ids:
                         updated_count += 1
                         updated_ids.add(way_id)
             else:
                 print(f"Warning: Room {way_id} has matches but no suitable text found.")
 
+    # 更新相关passage的osmAG:from和osmAG:to标签
+    updated_passage_count = 0
+    if room_name_changes:
+        print(f"\n更新相关passage的连接关系...")
+        for way in root.findall('.//way'):
+            # 检查是否是passage
+            is_passage = False
+            for tag in way.findall('./tag'):
+                if tag.get('k') == 'osmAG:type' and tag.get('v') == 'passage':
+                    is_passage = True
+                    break
+            
+            if not is_passage:
+                continue
+                
+            passage_id = way.get('id')
+            passage_updated = False
+            
+            # 检查osmAG:from和osmAG:to标签
+            for tag in way.findall('./tag'):
+                tag_key = tag.get('k')
+                tag_value = tag.get('v')
+                
+                if tag_key in ['osmAG:from', 'osmAG:to']:
+                    # 检查是否需要更新这个标签值
+                    for room_id, change in room_name_changes.items():
+                        old_name = change['old_name']
+                        new_name = change['new_name']
+                        
+                        # 如果passage的from/to指向了被更名的房间
+                        if tag_value == old_name or (old_name is None and tag_value == f'room_{room_id}'):
+                            print(f"  更新passage {passage_id}的{tag_key}: '{tag_value}' -> '{new_name}'")
+                            tag.set('v', new_name)
+                            passage_updated = True
+            
+            if passage_updated:
+                updated_passage_count += 1
 
     print(f"OSM tree update check complete. {updated_count} room names added or modified.")
+    if updated_passage_count > 0:
+        print(f"同时更新了 {updated_passage_count} 个passage的连接关系。")
+    
     return updated_count
 
 def main():
