@@ -384,13 +384,14 @@ def save_occupancy_grid(occupancy_grid, output_path):
 # 使用示例
 if __name__ == "__main__":
     # --- 用户可修改路径 ---
-    input_dir = "/home/jay/AGSeg_ws/AGSeg/good-res/Universita-pianta-02/" # 输入 SVG 文件夹
-    output_dir = "/home/jay/AGSeg_ws/AGSeg/good-res/Universita-pianta-02/" # 输出 PNG 文件夹
+    # 输入路径 - 可以是单个SVG文件或包含SVG文件的文件夹
+    input_path = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/web-cad/img/svg_manual_filter/historical_museum.svg"
+    output_dir = "/home/jay/AGSeg_ws/AGSeg/test_output"
     target_output_size = (4000, 4000) # 默认目标 PNG 尺寸（当bounds.json不存在时使用）
     target_line_thickness = 1        # 输出 PNG 中的线条粗细 (1表示保持原样)
     
     # 墙壁填充算法参数
-    enable_wall_filling = True       # 是否启用墙壁填充
+    enable_wall_filling = False      # 是否启用墙壁填充 - 设置为 False
     wall_gap_size = 'medium'        # 墙壁空隙大小: 'small', 'medium', 'large'
     wall_min_area = 100             # 最小连通区域面积
     # --------------------
@@ -398,13 +399,29 @@ if __name__ == "__main__":
     # 确保输出目录存在
     os.makedirs(output_dir, exist_ok=True)
 
-    # 查找输入目录下的所有 SVG 文件
-    svg_files = glob.glob(os.path.join(input_dir, '*.svg'))
+    # 智能判断输入类型并获取SVG文件列表
+    svg_files = []
+    
+    if not os.path.exists(input_path):
+        print(f"错误：输入路径不存在: {input_path}")
+    elif os.path.isfile(input_path):
+        # 单个文件模式
+        if input_path.lower().endswith('.svg'):
+            svg_files = [input_path]
+            print(f"单文件模式：处理文件 {os.path.basename(input_path)}")
+        else:
+            print(f"错误：输入文件不是SVG格式: {input_path}")
+    elif os.path.isdir(input_path):
+        # 文件夹批量模式
+        svg_files = glob.glob(os.path.join(input_path, '*.svg'))
+        print(f"批量模式：在目录 '{input_path}' 中找到 {len(svg_files)} 个SVG文件")
+    else:
+        print(f"错误：无法识别输入路径类型: {input_path}")
 
     if not svg_files:
-        print(f"错误：在目录 '{input_dir}' 中未找到任何 .svg 文件。")
+        print("错误：未找到可处理的SVG文件。")
     else:
-        print(f"找到 {len(svg_files)} 个 SVG 文件，开始批量转换...")
+        print(f"开始转换 {len(svg_files)} 个SVG文件...")
         if enable_wall_filling:
             print(f"墙壁填充已启用 - 空隙大小: {wall_gap_size}, 最小区域: {wall_min_area}")
         else:
@@ -437,7 +454,7 @@ if __name__ == "__main__":
                 fail_count += 1
                 failed_files.append(filename)
 
-        print("\n--- 批量转换完成 ---")
+        print("\n--- 转换完成 ---")
         print(f"成功转换文件数: {success_count}")
         print(f"失败文件数: {fail_count}")
         if failed_files:
