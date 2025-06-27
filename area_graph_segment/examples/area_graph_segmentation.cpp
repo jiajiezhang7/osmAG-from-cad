@@ -114,10 +114,10 @@ int main(int argc, char *argv[]) {
     // 尝试加载参数文件
     try {
         // 加载配置文件
-        YAML::Node config = YAML::LoadFile("../config/params.yaml");
+        YAML::Node config = YAML::LoadFile("config/params.yaml");
         
         // 将配置加载到ParamsLoader单例中
-        ParamsLoader::getInstance().loadParams("../config/params.yaml");
+        ParamsLoader::getInstance().loadParams("config/params.yaml");
         
         // 地图预处理参数
         if (config["map_preprocessing"]) {

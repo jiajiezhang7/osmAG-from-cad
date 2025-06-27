@@ -40,9 +40,6 @@ bin/
 logs/
 cmake-build-debug/
 test_output/
-input/
-input_good/
-output/
 .cursor/
 .windsurf/
 good-res/

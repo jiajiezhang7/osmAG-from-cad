@@ -1,44 +1,44 @@
-# Area Graph - 区域图分割
+# Area Graph - Indoor Space Segmentation
 
-## 概述
+## Overview
 
-Area Graph 通过 Voronoi 图将室内环境分割成不同区域（房间、走廊等），生成拓扑地图用于机器人导航和路径规划。
+Area Graph segments indoor environments into different regions (rooms, corridors, etc.) using Voronoi diagrams, generating topological maps for robot navigation and path planning.
 
-**核心输出**：**osmAG.osm** - 包含房间几何形状、拓扑关系和语义信息的标准OSM XML格式文件
+**Core Output**: **osmAG.osm** - Standard OSM XML format file containing room geometries, topological relationships, and semantic information
 
-## 统一入口脚本
+## Unified Entry Script
 
 ```bash
-# 编译后的可执行文件
+# Compiled executable
 ./bin/example_segmentation <input_png> <resolution> <door_width> <corridor_width> <noise_percentage>
 ```
 
-## 学术背景
+## Academic Background
 
-基于论文：Hou, J., Yuan, Y., and Schwertfeger, S., "Area Graph: Generation of Topological Maps using the Voronoi Diagram", ICAR 2019.
+Based on the paper: Hou, J., Yuan, Y., and Schwertfeger, S., "Area Graph: Generation of Topological Maps using the Voronoi Diagram", ICAR 2019.
 
-📄 [论文链接](https://arxiv.org/abs/1910.01019)
+📄 [Paper Link](https://arxiv.org/abs/1910.01019)
 
-## 算法流程
+## Algorithm Pipeline
 
-1. **预处理** → **Voronoi图生成** → **拓扑图生成** → **房间检测** → **区域合并** → **osmAG导出**
+1. **Preprocessing** → **Voronoi Generation** → **Topological Graph** → **Room Detection** → **Region Merging** → **osmAG Export**
 
-核心步骤：
-- 使用 Alpha Shape 算法进行家具移除和房间检测
-- 基于 Voronoi 图生成拓扑结构
-- 多边形优化，去除毛刺和尖角
-- 输出标准OSM XML格式
+Core Steps:
+- Use Alpha Shape algorithm for furniture removal and room detection
+- Generate topological structure based on Voronoi diagram
+- Polygon optimization, removing spikes and sharp corners
+- Export to standard OSM XML format
 
-## 快速开始
+## Quick Start
 
-### 环境依赖
+### System Dependencies
 
-**Ubuntu系统安装**：
+**Ubuntu Installation**:
 ```bash
 sudo apt-get install g++ cmake qtbase5-dev libcgal-dev
 ```
 
-### 编译运行
+### Build and Run
 
 ```bash
 cd area_graph_segment/
@@ -46,86 +46,86 @@ mkdir build && cd build
 cmake ..
 make example_segmentation
 
-# 运行
+# Run
 ./bin/example_segmentation <input_png> <resolution> <door_width> <corridor_width> <noise_percentage>
 ```
 
-## 参数说明
+## Parameter Description
 
-| 参数 | 说明 | 推荐值 |
-|------|------|--------|
-| `input_png` | 输入PNG地图文件（白色背景，黑色障碍物） | - |
-| `resolution` | 地图分辨率 | `0.05` |
-| `door_width` | 最宽门的宽度（-1为自动） | `-1` 或 `0.85` |
-| `corridor_width` | 最窄走廊宽度（-1为自动） | `-1` 或 `2.7` |
-| `noise_percentage` | 噪声百分比估计 | `1.5` |
+| Parameter | Description | Recommended Value |
+|-----------|-------------|-------------------|
+| `input_png` | Input PNG map file (white background, black obstacles) | - |
+| `resolution` | Map resolution (meters/pixel) | `0.05` |
+| `door_width` | Width of the widest door (-1 for automatic) | `-1` or `0.85` |
+| `corridor_width` | Width of the narrowest corridor (-1 for automatic) | `-1` or `2.7` |
+| `noise_percentage` | Noise percentage estimation | `1.5` |
 
-**使用示例**：
+**Usage Examples**:
 ```bash
-# 自动参数（推荐）
+# Automatic parameters (recommended)
 ./bin/example_segmentation input.png 0.05 -1 -1 1.5
 
-# 手动指定门宽和走廊宽度
+# Manual door and corridor width specification
 ./bin/example_segmentation input.png 0.05 0.85 2.7 1.5
 ```
 
-## 高级配置
+## Advanced Configuration
 
-通过 `config/params.yaml` 可调整：
+Adjustable through `config/params.yaml`:
 
-**多边形处理**：
-- `simplify_tolerance`: 简化容差 (默认: 0.05)
-- `spike_angle_threshold`: 毛刺角度阈值 (默认: 60.0°)
+**Polygon Processing**:
+- `simplify_tolerance`: Simplification tolerance (default: 0.05)
+- `spike_angle_threshold`: Spike angle threshold (default: 60.0°)
 
-**小房间合并**：
-- `min_area`: 最小房间面积 (默认: 4.0 m²)
-- `max_merge_distance`: 最大合并距离 (默认: 1.5 m)
+**Small Room Merging**:
+- `min_area`: Minimum room area (default: 4.0 m²)
+- `max_merge_distance`: Maximum merge distance (default: 1.5 m)
 
-**坐标系统**：
-- `root_node`: 地理坐标参考点设置
-- `level`: 楼层信息，用于OSM标签（默认: "1"）
-- `height_per_level`: 每层高度（米），用于计算房间和通道的高度（默认: 3.2）
+**Coordinate System**:
+- `root_node`: Geographic coordinate reference point settings
+- `level`: Floor information for OSM tags (default: "1")
+- `height_per_level`: Height per floor (meters) for calculating room and passage heights (default: 3.2)
 
-## 输出结果
+## Output Results
 
-| 文件 | 说明 | 用途 |
-|------|------|------|
-| **osmAG.osm** | 🎯 **核心输出** - OSM格式的拓扑地图 | 机器人导航、路径规划 |
-| 彩色区域图 | 不同区域的颜色标记图像 | 可视化验证 |
-| 轮廓图 | 区域边界的黑白图像 | 调试分析 |
+| File | Description | Purpose |
+|------|-------------|---------|
+| **osmAG.osm** | 🎯 **Core Output** - Topological map in OSM format | Robot navigation, path planning |
+| Colored region map | Color-coded image of different regions | Visualization verification |
+| Contour map | Black and white image of region boundaries | Debug analysis |
 
-### osmAG格式特点
+### osmAG Format Features
 
-**osmAG**（OpenStreetMap Area Graph）是标准OSM XML格式，包含：
-- 🏠 **房间几何**：多边形轮廓和面积信息
-- 🔗 **拓扑关系**：房间间的连接关系
-- 🏷️ **语义标签**：房间类型、名称等属性
-- 📍 **楼层信息**：所有房间和通道都包含`level`标签
-- 🎯 **导航友好**：直接支持OSM生态系统
+**osmAG** (OpenStreetMap Area Graph) is in standard OSM XML format, containing:
+- 🏠 **Room Geometry**: Polygon outlines and area information
+- 🔗 **Topological Relations**: Connectivity between rooms
+- 🏷️ **Semantic Tags**: Room types, names, and other attributes
+- 📍 **Floor Information**: All rooms and passages include `level` tags
+- 🎯 **Navigation-Friendly**: Direct support for OSM ecosystem
 
-## 代码架构
+## Code Architecture
 
-| 模块 | 功能 |
-|------|------|
-| **VoriGraph** | Voronoi图数据结构和处理 |
-| **TopoGraph** | 拓扑图生成和优化 |
-| **RoomDect** | 房间检测算法 |
-| **AreaGraph** | 区域图生成和合并 |
-| **osmAGExport** | OSM格式导出和多边形优化 |
+| Module | Function |
+|--------|----------|
+| **VoriGraph** | Voronoi diagram data structure and processing |
+| **TopoGraph** | Topological graph generation and optimization |
+| **RoomDect** | Room detection algorithm |
+| **AreaGraph** | Region graph generation and merging |
+| **osmAGExport** | OSM format export and polygon optimization |
 
-## 参数调优建议
+## Parameter Tuning Recommendations
 
-**减少过度分割**：
-- 增大 `alphaShapeRemovalSquaredSize`: 625 → 900-1000
-- 增大 `topoGraphMarkAsFeatureEdgeLength`: 16 → 20-24
+**Reduce Over-segmentation**:
+- Increase `alphaShapeRemovalSquaredSize`: 625 → 900-1000
+- Increase `topoGraphMarkAsFeatureEdgeLength`: 16 → 20-24
 
-**配置文件调整**：修改 `config/params.yaml` 中的多边形处理和房间合并参数
+**Configuration File Adjustment**: Modify polygon processing and room merging parameters in `config/params.yaml`
 
-## 应用场景
+## Application Scenarios
 
-- 🤖 **机器人导航**：高级别拓扑信息，支持语义导航
-- 🗺️ **路径规划**：基于区域的高效路径规划
-- 📍 **室内定位**：语义化定位和空间理解
-- 💬 **人机交互**：理解"去会议室"等自然语言指令
+- 🤖 **Robot Navigation**: High-level topological information supporting semantic navigation
+- 🗺️ **Path Planning**: Efficient region-based path planning
+- 📍 **Indoor Localization**: Semantic localization and spatial understanding
+- 💬 **Human-Robot Interaction**: Understanding natural language instructions like "go to the meeting room"
 
-> 📝 **下一步**：使用文本提取模块为房间添加名称，详见 [cad2osm/script/text_extract_module/README.md](../cad2osm/script/text_extract_module/README.md)
+> 📝 **Next Step**: Use the text extraction module to add names to rooms, see [cad2osm/script/text_extract_module/README.md](../cad2osm/script/text_extract_module/README.md)

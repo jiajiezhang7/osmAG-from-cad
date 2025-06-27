@@ -1,185 +1,345 @@
-# 批量处理PNG文件指南
+# Batch Processing Guide for PNG Floor Plans
 
-本文档介绍如何使用批量处理脚本自动化处理多个PNG建筑平面图文件。
+This document provides a comprehensive guide for automated batch processing of PNG building floor plan files using the area graph segmentation system.
 
-## 概述
+## Overview
 
-### 新增的命令行参数支持
+### Command Line Parameter Support
 
-现在 `area_graph_segmentation` 支持以下命令行参数来覆盖 `params.yaml` 中的配置：
+The `area_graph_segmentation` executable now supports command-line arguments to override configurations in `params.yaml`:
 
 ```bash
 ./bin/area_graph_segmentation image.png [options]
 
 Options:
-  --resolution <value>        地图分辨率 (米/像素)
-  --door-width <value>        门宽度
-  --corridor-width <value>    走廊宽度  
-  --noise-percent <value>     噪声百分比 (0-100)
-  --png-width <value>         PNG图像宽度
-  --png-height <value>        PNG图像高度
-  --root-lat <value>          根节点纬度
-  --root-lon <value>          根节点经度
-  --root-pixel-x <value>      根节点像素X位置
-  --root-pixel-y <value>      根节点像素Y位置
-  --simplify-tolerance <value> 多边形简化容差
-  --spike-angle <value>       毛刺移除角度阈值
-  --spike-distance <value>    毛刺移除距离阈值
-  --min-room-area <value>     最小房间面积过滤
-  --clean-input <0|1>         启用输入清理
-  --remove-furniture <0|1>    启用家具移除
-  --record-time               启用时间记录
+  --resolution <value>        Map resolution (meters/pixel)
+  --door-width <value>        Door width in meters
+  --corridor-width <value>    Corridor width in meters
+  --noise-percent <value>     Noise percentage (0-100)
+  --png-width <value>         PNG image width
+  --png-height <value>        PNG image height
+  --root-lat <value>          Root node latitude
+  --root-lon <value>          Root node longitude
+  --root-pixel-x <value>      Root node pixel X position
+  --root-pixel-y <value>      Root node pixel Y position
+  --simplify-tolerance <value> Polygon simplification tolerance
+  --spike-angle <value>       Spike removal angle threshold
+  --spike-distance <value>    Spike removal distance threshold
+  --min-room-area <value>     Minimum room area filter
+  --clean-input <0|1>         Enable input cleaning
+  --remove-furniture <0|1>    Enable furniture removal
+  --record-time               Enable time recording
 ```
 
-### 批量处理脚本功能
+### Batch Processing Script Features
 
-`batch_process_png.py` 脚本提供以下功能：
+The `batch_process_png.py` script provides the following capabilities:
 
-1. **自动建筑类型识别**: 根据文件名自动识别建筑类型
-2. **智能参数配置**: 为不同建筑类型设置最适合的参数
-3. **图像尺寸自适应**: 根据图片大小自动调整分辨率
-4. **批量处理**: 一次处理整个目录的PNG文件
-5. **进度监控**: 显示处理进度和结果统计
+1. **Automatic Building Type Recognition**: Identifies building types based on filename patterns
+2. **Intelligent Parameter Configuration**: Applies optimal parameters for different building types
+3. **Image Size Adaptation**: Automatically adjusts resolution based on image dimensions
+4. **Batch Processing**: Processes entire directories of PNG files at once
+5. **Progress Monitoring**: Displays processing progress and result statistics
+6. **Multi-Alpha Testing**: Advanced feature for parameter optimization
 
-## 使用方法
+## Basic Usage
 
-### 1. 基本用法
+### 1. Standard Batch Processing
 
 ```bash
-# 进入area_graph_segment目录
+# Navigate to the area_graph_segment directory
 cd area_graph_segment
 
-# 批量处理指定目录的所有PNG文件
+# Process all PNG files in a specified directory
 python3 batch_process_png.py /path/to/png/directory
 
-# 例如处理cad2osm中的PNG文件
+# Example: Process PNG files from cad2osm
 python3 batch_process_png.py ../cad2osm/data/web-cad/img/png_manual_filter
 ```
 
-### 2. 预览模式
+### 2. Preview Mode
 
-在实际执行前，可以使用预览模式查看将要执行的命令：
+Use dry-run mode to preview commands before execution:
 
 ```bash
 python3 batch_process_png.py ../cad2osm/data/web-cad/img/png_manual_filter --dry-run
 ```
 
-### 3. 过滤特定文件
+### 3. File Filtering
 
 ```bash
-# 只处理包含"apartment"的文件
+# Process only files containing "apartment"
 python3 batch_process_png.py ../cad2osm/data/web-cad/img/png_manual_filter --filter apartment
 
-# 跳过包含"hotel"的文件
+# Skip files containing "hotel"
 python3 batch_process_png.py ../cad2osm/data/web-cad/img/png_manual_filter --skip hotel
 ```
 
-### 4. 指定可执行文件路径
+### 4. Custom Executable Path
 
 ```bash
 python3 batch_process_png.py ../cad2osm/data/web-cad/img/png_manual_filter --executable ./bin/area_graph_segmentation
 ```
 
-## 建筑类型配置
+## Advanced Features: Multi-Alpha Testing
 
-脚本会根据文件名自动识别以下建筑类型，并应用相应的参数配置：
+### What is Alpha Value Testing?
 
-### 支持的建筑类型
+Multi-alpha testing is designed to solve segmentation quality issues when dealing with CAD images of unknown resolution downloaded from the web. By testing different alpha values, you can find the optimal parameter combination for specific images.
 
-| 建筑类型 | 关键词 | 特点 |
-|---------|--------|------|
-| apartment | apartment, residential | 住宅公寓，门较窄，房间较小 |
-| office | office, ufficio, schema-ufficio | 办公楼，廊道适中，房间规整 |
-| hotel | hotel | 酒店，廊道较宽，房间标准化 |
-| school | school, scuola, aule, universita | 学校，大廊道，大房间 |
-| gym | gym, gymnasium | 体育馆，超大空间 |
-| museum | museum, centro, cultural | 博物馆/文化中心，展览空间 |
-| monastery | monastery | 修道院，传统建筑风格 |
-| default | 其他 | 默认配置 |
+### Alpha Value Effects
 
-### 参数配置示例
+In area_graph_segmentation, alpha values control the granularity of Voronoi diagram subdivision:
+- **Smaller alpha values**: Produce coarser segmentation, suitable for buildings with larger rooms
+- **Larger alpha values**: Produce finer segmentation, suitable for buildings with smaller rooms or complex structures
 
-以下是不同建筑类型的典型参数配置：
+### Multi-Alpha Usage
+
+#### 1. Basic Multi-Alpha Testing
+
+```bash
+# Test specific alpha values
+python3 batch_process_png.py ./input_images --alpha-values "100,200,500,1000"
+
+# Test alpha value range (automatically generates arithmetic sequence)
+python3 batch_process_png.py ./input_images --alpha-values "100-1000"
+```
+
+#### 2. Using Preset Alpha Ranges
+
+```bash
+# Small range test (suitable for quick validation)
+python3 batch_process_png.py ./input_images --alpha-preset small
+
+# Medium range test (balanced choice)
+python3 batch_process_png.py ./input_images --alpha-preset medium
+
+# Large range test (suitable for large buildings)
+python3 batch_process_png.py ./input_images --alpha-preset large
+
+# Comprehensive test (includes all common values)
+python3 batch_process_png.py ./input_images --alpha-preset comprehensive
+```
+
+#### 3. Preview Multi-Alpha Commands
+
+```bash
+# View commands to be executed without actually running them
+python3 batch_process_png.py ./input_images --alpha-values "100,500,1000" --dry-run
+```
+
+#### 4. Combined with Other Parameters
+
+```bash
+# Process only files with specific keywords
+python3 batch_process_png.py ./input_images --alpha-values "100,500,1000" --filter "apartment"
+
+# Specify output directory
+python3 batch_process_png.py ./input_images --alpha-values "100,500,1000" --output-dir ./multi_alpha_results
+```
+
+### Preset Alpha Value Ranges
+
+| Preset Name | Alpha Values | Use Case |
+|-------------|--------------|----------|
+| small | [50, 100, 200, 500] | Quick testing, small buildings |
+| medium | [100, 200, 500, 1000, 2000] | General purpose, balanced testing |
+| large | [500, 1000, 2000, 5000] | Large buildings, complex structures |
+| comprehensive | [50, 100, 200, 500, 1000, 2000, 5000, 10000] | Comprehensive testing |
+
+### Multi-Alpha Output Structure
+
+Multi-alpha testing creates the following directory structure:
+
+```
+output/
+├── image1/
+│   ├── alpha_100/
+│   │   ├── image1.png
+│   │   ├── image1_output/
+│   │   ├── clean.png
+│   │   ├── afterAlphaRemoval.png
+│   │   └── ...
+│   ├── alpha_200/
+│   │   ├── image1.png
+│   │   ├── image1_output/
+│   │   └── ...
+│   └── alpha_500/
+│       └── ...
+└── image2/
+    ├── alpha_100/
+    └── ...
+```
+
+## Building Type Configuration
+
+The script automatically identifies building types based on filename patterns and applies appropriate parameter configurations:
+
+### Supported Building Types
+
+| Building Type | Keywords | Characteristics |
+|---------------|----------|-----------------|
+| apartment | apartment, residential | Residential apartments, narrow doors, smaller rooms |
+| office | office, ufficio, schema-ufficio | Office buildings, moderate corridors, regular rooms |
+| hotel | hotel | Hotels, wider corridors, standardized rooms |
+| school | school, scuola, aule, universita | Schools, large corridors, large rooms |
+| gym | gym, gymnasium | Gymnasiums, extra large spaces |
+| museum | museum, centro, cultural | Museums/cultural centers, exhibition spaces |
+| monastery | monastery | Monasteries, traditional architectural style |
+| default | others | Default configuration |
+
+### Parameter Configuration Examples
+
+Here are typical parameter configurations for different building types:
 
 ```python
 "apartment": {
-    "resolution": 0.04,        # 分辨率
-    "door_width": 0.9,         # 门宽0.9米
-    "corridor_width": 1.2,     # 廊宽1.2米  
-    "min_room_area": 8.0       # 最小房间8平米
+    "resolution": 0.04,        # Resolution
+    "door_width": 0.9,         # 0.9m door width
+    "corridor_width": 1.2,     # 1.2m corridor width
+    "min_room_area": 8.0       # 8 sqm minimum room area
 }
 
 "office": {
     "resolution": 0.035,
-    "door_width": 1.0,         # 门宽1.0米
-    "corridor_width": 1.5,     # 廊宽1.5米
-    "min_room_area": 12.0      # 最小房间12平米
+    "door_width": 1.0,         # 1.0m door width
+    "corridor_width": 1.5,     # 1.5m corridor width
+    "min_room_area": 12.0      # 12 sqm minimum room area
 }
 
 "hotel": {
     "resolution": 0.04,
     "door_width": 0.9,
-    "corridor_width": 1.8,     # 酒店廊道较宽
-    "min_room_area": 6.0       # 酒店房间可以较小
+    "corridor_width": 1.8,     # Wider hotel corridors
+    "min_room_area": 6.0       # Hotel rooms can be smaller
 }
 ```
 
-## 文件输出
+## Alpha Value Calculation
 
-每个处理的PNG文件会生成：
+The script automatically calculates corresponding door_width and corridor_width based on the following formula:
 
-1. `{filename}_output/` 目录包含所有中间和最终结果
-2. `{filename}_roomGraph.png` - 房间分割结果图
-3. `{filename}_osmAG.osm` - OSM格式的结果文件
-
-## 处理流程
-
-1. **文件识别**: 扫描目录中的PNG文件
-2. **类型判断**: 根据文件名识别建筑类型
-3. **参数配置**: 加载对应建筑类型的参数配置
-4. **尺寸分析**: 获取图片尺寸，调整分辨率参数
-5. **命令构建**: 构建完整的命令行参数
-6. **执行处理**: 调用area_graph_segmentation执行处理
-7. **结果统计**: 输出处理成功/失败统计
-
-## 故障排除
-
-### 常见问题
-
-1. **Python依赖问题**:
-```bash
-pip install Pillow  # 安装PIL库用于图像处理
+```
+alpha_value = ceil(a^2 * 0.25 / resolution^2)
 ```
 
-2. **可执行文件路径问题**:
+Where `a = min(door_width, corridor_width) + 0.1`
+
+Reverse formula:
+```
+a = sqrt(alpha_value * 4 * resolution^2)
+door_width = a - 0.1
+corridor_width = a + 0.5
+```
+
+## File Output
+
+Each processed PNG file generates:
+
+1. `{filename}_output/` directory containing all intermediate and final results
+2. `{filename}_roomGraph.png` - Room segmentation result image
+3. `{filename}_osmAG.osm` - OSM format result file
+
+## Processing Workflow
+
+1. **File Identification**: Scan PNG files in the directory
+2. **Type Recognition**: Identify building type based on filename
+3. **Parameter Configuration**: Load parameter configuration for the building type
+4. **Size Analysis**: Get image dimensions and adjust resolution parameters
+5. **Command Construction**: Build complete command-line arguments
+6. **Execute Processing**: Call area_graph_segmentation for processing
+7. **Result Statistics**: Output success/failure processing statistics
+
+## Usage Recommendations
+
+### For Basic Processing
+1. **First-time users**: Start with default building type recognition
+2. **Known building types**: Use appropriate filters for consistent results
+3. **Custom parameters**: Override specific parameters when needed
+
+### For Multi-Alpha Testing
+1. **Initial testing**: Use `--alpha-preset medium` for initial assessment
+2. **Refinement**: Select narrower alpha value ranges based on initial results
+3. **Batch processing**: Use the determined optimal alpha value for all similar images
+4. **Result comparison**: Review output images from different alpha values and select the best segmentation
+
+## Example Workflows
+
+### Basic Workflow
 ```bash
-# 确保area_graph_segmentation已编译
+# 1. Preview processing commands
+python3 batch_process_png.py ./cad_images --dry-run
+
+# 2. Process apartment buildings
+python3 batch_process_png.py ./cad_images --filter apartment
+
+# 3. Process with custom parameters
+python3 batch_process_png.py ./cad_images --door-width 1.2 --corridor-width 1.8
+```
+
+### Multi-Alpha Workflow
+```bash
+# 1. Quick preview test
+python3 batch_process_png.py ./cad_images --alpha-preset small --dry-run
+
+# 2. Execute medium range test
+python3 batch_process_png.py ./cad_images --alpha-preset medium
+
+# 3. Refine based on results
+python3 batch_process_png.py ./cad_images --alpha-values "800,1000,1200"
+
+# 4. Process all images with optimal parameters
+python3 batch_process_png.py ./all_cad_images --door-width 1.5 --corridor-width 2.0
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Python dependency issues**:
+```bash
+pip install Pillow  # Install PIL library for image processing
+```
+
+2. **Executable path issues**:
+```bash
+# Ensure area_graph_segmentation is compiled
 cd area_graph_segment
 make
 
-# 或指定完整路径
+# Or specify full path
 python3 batch_process_png.py /path/to/png --executable /full/path/to/bin/area_graph_segmentation
 ```
 
-3. **权限问题**:
+3. **Permission issues**:
 ```bash
 chmod +x batch_process_png.py
 chmod +x bin/area_graph_segmentation
 ```
 
-### 调试建议
+### Debugging Suggestions
 
-1. 先使用 `--dry-run` 模式预览命令
-2. 从单个文件开始测试
-3. 检查输出目录的日志文件
-4. 确保PNG文件格式正确
+1. Use `--dry-run` mode to preview commands first
+2. Start testing with a single file
+3. Check log files in output directories
+4. Ensure PNG files are in correct format
+5. Monitor disk space when using multi-alpha testing
 
-## 扩展配置
+## Performance Considerations
 
-如需添加新的建筑类型或调整参数，请修改 `batch_process_png.py` 中的 `BUILDING_CONFIGS` 字典。
+- Multi-alpha testing significantly increases processing time
+- Recommend testing with a small subset of images first to find suitable alpha ranges
+- Each alpha value creates complete output - monitor disk space usage
+- Use preview mode (`--dry-run`) to review parameter settings without execution
+- Consider running large batches in background for extended processing
 
-## 性能建议
+## Configuration Extension
 
-- 大批量处理时建议在后台运行
-- 可以使用 `--filter` 参数分批处理
-- 监控磁盘空间，每个文件会生成较多中间文件 
+To add new building types or adjust parameters, modify the `BUILDING_CONFIGS` dictionary in `batch_process_png.py`.
+
+## Notes
+
+- Multi-alpha testing creates significantly more output files
+- Use filtering options to process images in manageable batches
+- The script automatically handles image size variations and parameter scaling
+- Results should be evaluated visually to determine optimal segmentation quality 
