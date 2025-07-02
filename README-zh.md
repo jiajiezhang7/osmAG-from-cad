@@ -1,6 +1,24 @@
-# AGSeg 工程说明
+# CAD2OSM 代码库
 
-本工程实现了从CAD图纸（DWG格式）到Enhanced OpenStreetMap（OSM） - OSMAG Map的自动化转换流程。
+本代码库实现了从CAD图纸（DWG格式）到Enhanced OpenStreetMap（OSM） - OSMAG Map的自动化转换流程。
+
+## 引用
+
+如果您在研究中使用了此工作，请引用：
+
+```bibtex
+@misc{zhang2025generationindooropenstreet,
+      title={Generation of Indoor Open Street Maps for Robot Navigation from CAD Files}, 
+      author={Jiajie Zhang and Shenrui Wu and Xu Ma and Sören Schwertfeger},
+      year={2025},
+      eprint={2507.00552},
+      archivePrefix={arXiv},
+      primaryClass={cs.RO},
+      url={https://arxiv.org/abs/2507.00552}, 
+}
+```
+
+**论文链接**: [Generation of Indoor Open Street Maps for Robot Navigation from CAD Files](https://arxiv.org/abs/2507.00552)
 
 ## 整体流程
 
