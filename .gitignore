@@ -44,3 +44,4 @@ test_output/
 .windsurf/
 good-res/
 result_anaylsis/
+cad2osm/script/core_process/dxf_filter.py

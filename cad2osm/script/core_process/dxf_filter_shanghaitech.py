@@ -1,6 +1,6 @@
 # Last edited by Jiajie Zhang 2024.12.06
-# 该脚本用于将全图层dxf过滤为保留固定图层的dxf，在机理上已经成功了，但由于CAD文件图层的命名不规则性，用 hard-coded的方式是无法实现的
-# 25.5.06 在过滤前实现：把所有 INSERT 展平到 modelspace，保证输出的 DXF 里真正只有几何实体，不再依赖 BLOCK 定义
+# 该脚本用于将全图层dxf过滤为保留固定图层的dxf，在机理上已经成功了，但由于CAD文件图层的命名不规则性，用 hard-coded的方式是无法实现的, 所以需要用关键词评分的方式来过滤, 并且只对shanghaitech的有效
+
 import ezdxf
 import os
 from datetime import datetime

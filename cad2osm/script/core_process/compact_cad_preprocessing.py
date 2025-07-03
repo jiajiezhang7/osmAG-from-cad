@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # 集成CAD预处理流程脚本 - 增强计时版本
-# 作者: Cascade AI 辅助 Jiajie Zhang
+# 作者: Jiajie Zhang
 # 创建日期: 2025-05-13
-# 修改日期: 2025-01-27 - 添加详细计时功能
 
 import os
 import sys
@@ -17,8 +16,9 @@ import statistics
 
 # 导入各个处理模块
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'layer_filter'))
 from dwg2dxf_oda import ODAConverter
-from dxf_filter import filter_dxf_layers
+from layer_filter.dxf_filter_by_keywords import filter_dxf_layers
 from dxf2svg import dxf_to_svg, load_yaml_config
 from svg2png import svg_to_occupancy_grid, save_occupancy_grid
 
