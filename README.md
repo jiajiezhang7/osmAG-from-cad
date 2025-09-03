@@ -2,24 +2,6 @@
 
 This project provides an automated workflow to convert CAD drawings (DWG format) into **Enhanced OpenStreetMap (OSM)** — referred to as **OSMAG Map** in this repository.
 
-## Citation
-
-If you use this work in your research, please cite:
-
-```bibtex
-@misc{zhang2025generationindooropenstreet,
-      title={Generation of Indoor Open Street Maps for Robot Navigation from CAD Files}, 
-      author={Jiajie Zhang and Shenrui Wu and Xu Ma and Sören Schwertfeger},
-      year={2025},
-      eprint={2507.00552},
-      archivePrefix={arXiv},
-      primaryClass={cs.RO},
-      url={https://arxiv.org/abs/2507.00552}, 
-}
-```
-
-**Paper**: [Generation of Indoor Open Street Maps for Robot Navigation from CAD Files](https://arxiv.org/abs/2507.00552)
-
 ## End-to-End Pipeline
 
 ```
