@@ -20,6 +20,8 @@
 
 **论文链接**: [Generation of Indoor Open Street Maps for Robot Navigation from CAD Files](https://arxiv.org/abs/2507.00552)
 
+**代码可用性**：最新版本的代码将在论文接收（upon acceptance）后更新。
+
 ## 整体流程
 
 ```

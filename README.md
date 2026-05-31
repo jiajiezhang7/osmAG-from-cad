@@ -20,6 +20,8 @@ If you use this work in your research, please cite:
 
 **Paper**: [Generation of Indoor Open Street Maps for Robot Navigation from CAD Files](https://arxiv.org/abs/2507.00552)
 
+**Code Availability**: The latest version of the code will be updated upon acceptance of the paper.
+
 ## End-to-End Pipeline
 
 ```
