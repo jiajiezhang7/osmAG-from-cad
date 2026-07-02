@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-为osmAG.xml文件添加建筑外轮廓
+为osmAG.xml文件添加楼层外轮廓
 
-此脚本读取osmAG.xml文件，计算所有房间的外轮廓，并添加一个包含外轮廓的way，
-该way具有building=Architecture标签。
+此脚本读取osmAG.xml文件，计算指定楼层所有房间的外轮廓，并添加一个包含外轮廓的way，
+该way具有楼层相关的标签。
 
 用法:
-    python add_building_outline.py --input <input.osm> --output <output.osm>
+    python add_level_parent.py --input <input.osm> --output <output.osm> --level <level_number>
 
 参数:
     --input: 输入的osmAG.xml文件路径
     --output: 输出的OSM文件路径
+    --level: 楼层编号（默认为2）
 """
 
 import argparse
@@ -67,12 +68,13 @@ def save_osm_file(tree, file_path):
         return False
 
 
-def get_room_polygons(osm_root):
+def get_room_polygons_by_level(osm_root, level):
     """
-    从OSM文件中提取所有房间的多边形
+    从OSM文件中提取指定楼层所有房间的多边形
 
     参数:
         osm_root: OSM XML根元素
+        level: 楼层编号
 
     返回:
         元组 (room_polygons, room_ids):
@@ -90,20 +92,29 @@ def get_room_polygons(osm_root):
     room_polygons = []
     room_ids = []
 
-    # 查找所有房间way
+    # 查找指定楼层的所有房间way
     for way in osm_root.findall('.//way'):
         is_room = False
+        has_level_tag = False
+        is_target_level = False
 
-        # 检查是否是房间
+        # 检查是否是房间且在指定楼层
         for tag in way.findall('./tag'):
             k = tag.get('k')
             v = tag.get('v')
 
             if k == 'osmAG:areaType' and v == 'room':
                 is_room = True
-                break
 
+            if k == 'level':
+                has_level_tag = True
+                if v == str(level):
+                    is_target_level = True
+
+        # 如果是房间，且（没有level标签 或 level标签匹配），则处理
         if not is_room:
+            continue
+        if has_level_tag and not is_target_level:
             continue
 
         # 获取房间的节点坐标
@@ -268,23 +279,26 @@ def ensure_counterclockwise(coords):
     return coords
 
 
-def add_parent_tags_to_rooms(osm_root, room_ids, building_outline_name):
+def add_parent_tags_to_rooms(osm_root, room_ids, level_outline_name, level):
     """
-    为房间添加osmAG:parent标签，指向建筑外轮廓
+    为房间添加osmAG:parent标签，指向楼层外轮廓
+    同时为没有level标签的房间添加level标签
 
     参数:
         osm_root: OSM XML根元素
         room_ids: 房间way ID列表
-        building_outline_name: 建筑外轮廓的name值
+        level_outline_name: 楼层外轮廓的name值
+        level: 楼层编号
 
     返回:
         成功添加标签的房间数量
     """
-    if not room_ids or not building_outline_name:
-        print("房间ID列表或建筑轮廓name为空，无法添加父子关系")
+    if not room_ids or not level_outline_name:
+        print("房间ID列表或楼层轮廓name为空，无法添加父子关系")
         return 0
 
     success_count = 0
+    added_level_count = 0
 
     try:
         # 遍历所有way元素
@@ -295,24 +309,36 @@ def add_parent_tags_to_rooms(osm_root, room_ids, building_outline_name):
             if way_id not in room_ids:
                 continue
 
-            # 检查是否已经有osmAG:parent标签
+            # 检查是否已经有osmAG:parent标签和level标签
             has_parent_tag = False
+            has_level_tag = False
+
             for tag in way.findall('./tag'):
                 if tag.get('k') == 'osmAG:parent':
                     # 更新现有标签
-                    tag.set('v', building_outline_name)
+                    tag.set('v', level_outline_name)
                     has_parent_tag = True
-                    break
+                elif tag.get('k') == 'level':
+                    has_level_tag = True
 
-            # 如果没有，添加新标签
+            # 如果没有osmAG:parent标签，添加新标签
             if not has_parent_tag:
                 parent_tag = ET.SubElement(way, 'tag')
                 parent_tag.set('k', 'osmAG:parent')
-                parent_tag.set('v', building_outline_name)
+                parent_tag.set('v', level_outline_name)
+
+            # 如果没有level标签，根据parent的level添加
+            if not has_level_tag:
+                level_tag = ET.SubElement(way, 'tag')
+                level_tag.set('k', 'level')
+                level_tag.set('v', str(level))
+                added_level_count += 1
 
             success_count += 1
 
         print(f"成功为 {success_count} 个房间添加 osmAG:parent 标签")
+        if added_level_count > 0:
+            print(f"为 {added_level_count} 个房间添加了 level 标签")
         return success_count
 
     except Exception as e:
@@ -346,19 +372,20 @@ def get_next_id(osm_root, element_type='way'):
     return str(min_id - 1)
 
 
-def add_building_outline_to_osm(osm_root, outline_coords):
+def add_level_outline_to_osm(osm_root, outline_coords, level):
     """
-    向OSM文件添加建筑外轮廓
+    向OSM文件添加楼层外轮廓
 
     参数:
         osm_root: OSM XML根元素
         outline_coords: 外轮廓坐标点列表 [(lat, lon), ...]
+        level: 楼层编号
 
     返回:
-        成功返回建筑轮廓的name（字符串），失败返回None
+        成功返回楼层轮廓的name（字符串），失败返回None
     """
     if not outline_coords or len(outline_coords) < 4:
-        print("外轮廓坐标不足，无法创建建筑轮廓")
+        print("外轮廓坐标不足，无法创建楼层轮廓")
         return None
 
     try:
@@ -380,7 +407,7 @@ def add_building_outline_to_osm(osm_root, outline_coords):
             osm_root.append(node_elem)
             node_refs.append(node_id)
 
-        # 创建建筑轮廓way
+        # 创建楼层轮廓way
         way_id = get_next_id(osm_root, 'way')
         way_elem = ET.Element('way')
         way_elem.set('id', way_id)
@@ -393,35 +420,54 @@ def add_building_outline_to_osm(osm_root, outline_coords):
             nd_elem.set('ref', node_ref)
 
         # 添加标签
-        building_tag = ET.SubElement(way_elem, 'tag')
-        building_tag.set('k', 'building')
-        building_tag.set('v', 'Architecture')
+        # height = 3.2 * level
+        height_value = 3.2 * level
+        height_tag = ET.SubElement(way_elem, 'tag')
+        height_tag.set('k', 'height')
+        height_tag.set('v', str(height_value))
 
-        # 添加其他有用的标签
-        outline_tag = ET.SubElement(way_elem, 'tag')
-        outline_tag.set('k', 'name')
-        outline_tag.set('v', 'Building Outline')
+        # indoor = room
+        indoor_tag = ET.SubElement(way_elem, 'tag')
+        indoor_tag.set('k', 'indoor')
+        indoor_tag.set('v', 'room')
 
+        # level = *
+        level_tag = ET.SubElement(way_elem, 'tag')
+        level_tag.set('k', 'level')
+        level_tag.set('v', str(level))
+
+        # name = F*
+        level_name = f'F{level}'
+        name_tag = ET.SubElement(way_elem, 'tag')
+        name_tag.set('k', 'name')
+        name_tag.set('v', level_name)
+
+        # osmAG:areaType = structure
+        area_type_tag = ET.SubElement(way_elem, 'tag')
+        area_type_tag.set('k', 'osmAG:areaType')
+        area_type_tag.set('v', 'structure')
+
+        # osmAG:type = area
         type_tag = ET.SubElement(way_elem, 'tag')
         type_tag.set('k', 'osmAG:type')
-        type_tag.set('v', 'building_outline')
+        type_tag.set('v', 'area')
 
         # 添加到OSM根元素
         osm_root.append(way_elem)
 
-        building_name = 'Building Outline'
-        print(f"成功添加建筑外轮廓，包含 {len(outline_coords)} 个节点，ID: {way_id}, Name: {building_name}")
-        return building_name
+        print(f"成功添加楼层外轮廓，包含 {len(outline_coords)} 个节点，ID: {way_id}, Name: {level_name}")
+        return level_name
 
     except Exception as e:
-        print(f"添加建筑外轮廓时出错: {e}")
+        print(f"添加楼层外轮廓时出错: {e}")
         return None
 
 
 def main():
-    parser = argparse.ArgumentParser(description='为osmAG.xml文件添加建筑外轮廓')
+    parser = argparse.ArgumentParser(description='为osmAG.xml文件添加楼层外轮廓')
     parser.add_argument('--input', '-i', required=True, help='输入的osmAG.xml文件路径')
     parser.add_argument('--output', '-o', required=True, help='输出的OSM文件路径')
+    parser.add_argument('--level', '-l', type=int, default=2, help='楼层编号（默认为2）')
     parser.add_argument('--method', '-m', choices=['boundary', 'convex_hull', 'alpha_shape'],
                        default='boundary', help='轮廓计算方法：联合边界(boundary)、凸包(convex_hull)或Alpha形状(alpha_shape)')
 
@@ -440,37 +486,37 @@ def main():
         print("加载OSM文件失败")
         sys.exit(1)
 
-    # 提取房间多边形
-    print("正在提取房间多边形...")
-    room_polygons, room_ids = get_room_polygons(osm_root)
+    # 提取指定楼层的房间多边形
+    print(f"正在提取楼层 {args.level} 的房间多边形...")
+    room_polygons, room_ids = get_room_polygons_by_level(osm_root, args.level)
 
     if not room_polygons:
-        print("警告：未找到任何房间，无法计算建筑外轮廓")
+        print(f"警告：未找到楼层 {args.level} 的任何房间，无法计算楼层外轮廓")
         sys.exit(1)
 
     print(f"找到 {len(room_polygons)} 个房间")
 
-    # 计算建筑外轮廓
-    print(f"正在使用 {args.method} 方法计算建筑外轮廓...")
+    # 计算楼层外轮廓
+    print(f"正在使用 {args.method} 方法计算楼层外轮廓...")
     outline_coords = calculate_building_outline(room_polygons, method=args.method)
 
     if not outline_coords:
-        print("计算建筑外轮廓失败")
+        print("计算楼层外轮廓失败")
         sys.exit(1)
 
     print(f"计算得到外轮廓，包含 {len(outline_coords)} 个顶点")
 
-    # 添加建筑外轮廓到OSM文件
-    print("正在添加建筑外轮廓到OSM文件...")
-    building_outline_id = add_building_outline_to_osm(osm_root, outline_coords)
+    # 添加楼层外轮廓到OSM文件
+    print("正在添加楼层外轮廓到OSM文件...")
+    level_outline_name = add_level_outline_to_osm(osm_root, outline_coords, args.level)
 
-    if not building_outline_id:
-        print("添加建筑外轮廓失败")
+    if not level_outline_name:
+        print("添加楼层外轮廓失败")
         sys.exit(1)
 
     # 为房间添加父子关系标签
     print("正在为房间添加 osmAG:parent 标签...")
-    tagged_count = add_parent_tags_to_rooms(osm_root, room_ids, building_outline_id)
+    tagged_count = add_parent_tags_to_rooms(osm_root, room_ids, level_outline_name, args.level)
 
     if tagged_count == 0:
         print("警告：未能为任何房间添加父子关系标签")
