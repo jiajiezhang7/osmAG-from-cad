@@ -80,9 +80,6 @@ DWG 转换仍由 `cad2osm/script/core_process/dwg2dxf_oda.py` 支持，但需要
 
 `area_graph_segment/config/params.yaml` 仍是直接运行 `area_graph_segmentation` 时的默认配置。统一入口会生成 effective config 并通过 `--config` 传给 C++ 程序。
 
-## 数据与 Git 策略
-
-当前只追踪代表性的 web-cad 子集，不默认加入全部 24 张 web-cad。新的复现实验输出写入 `runs/`，该目录已被 Git 忽略。
 
 ## 主要组件
 
