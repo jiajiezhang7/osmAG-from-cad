@@ -16,6 +16,24 @@
 #include <boost/geometry/geometries/polygon.hpp>
 #include <boost/geometry/algorithms/area.hpp>
 
+namespace {
+
+double getConfiguredResolution(double fallback = 0.044) {
+    try {
+        auto& params = ParamsLoader::getInstance();
+        if (params.params["map_preprocessing"] && params.params["map_preprocessing"]["resolution"]) {
+            return params.params["map_preprocessing"]["resolution"].as<double>();
+        }
+        if (params.params["png_dimensions"] && params.params["png_dimensions"]["resolution"]) {
+            return params.params["png_dimensions"]["resolution"].as<double>();
+        }
+    } catch (...) {}
+
+    return fallback;
+}
+
+} // namespace
+
 namespace RMG {
 namespace RoomProcessor {
 
@@ -144,13 +162,7 @@ void mergeSmallAdjacentRooms(AreaGraph* areaGraph, double minArea, double maxMer
     
     // 小房间合并之前的单位转换
     // 读取配置中的分辨率(米/像素)
-    double resolution = 0.044;
-    try {
-        auto& params = ParamsLoader::getInstance();
-        if (params.params["png_dimensions"] && params.params["png_dimensions"]["resolution"]) {
-            resolution = params.params["png_dimensions"]["resolution"].as<double>();
-        }
-    } catch (...) {}
+    double resolution = getConfiguredResolution();
     // 像素面积到平方米，米到像素转换
     double pixelToSqMeter = resolution * resolution;
     // 将阈值从平方米转换到像素单位
@@ -323,8 +335,7 @@ void printRoomAreasSorted(AreaGraph* areaGraph) {
         return;
     }
     
-    // 使用默认分辨率（米/像素）
-    double resolution = 0.044;
+    double resolution = getConfiguredResolution();
     
     // 像素平方到平方米的转换系数
     double pixelToSqMeter = resolution * resolution;
@@ -341,12 +352,20 @@ void printRoomAreasSorted(AreaGraph* areaGraph) {
     });
     
     // 导出 CSV 供 Python 绘图（已转换为平方米）
-    std::ofstream csv("room_areas.csv");
+    std::string csvPath = "room_areas.csv";
+    try {
+        auto& params = ParamsLoader::getInstance();
+        if (params.params["runtime"] && params.params["runtime"]["output_dir"]) {
+            csvPath = params.params["runtime"]["output_dir"].as<std::string>() + "/room_areas.csv";
+        }
+    } catch (...) {}
+
+    std::ofstream csv(csvPath);
     for (auto &p : areas) {
         csv << "room_" << p.second->roomId << "," << p.first << "\n";
     }
     csv.close();
-    std::cout << "已导出房间面积CSV: room_areas.csv (单位: 平方米)" << std::endl;
+    std::cout << "已导出房间面积CSV: " << csvPath << " (单位: 平方米)" << std::endl;
     
     std::cout << "房间面积排序 (从大到小, 单位: 平方米):" << std::endl;
     int maxBarWidth = 50;

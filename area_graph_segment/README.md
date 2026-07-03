@@ -10,7 +10,7 @@ Area Graph segments indoor environments into different regions (rooms, corridors
 
 ```bash
 # Compiled executable
-./bin/example_segmentation <input_png> <resolution> <door_width> <corridor_width> <noise_percentage>
+./bin/area_graph_segmentation <input_png> [options]
 ```
 
 ## Academic Background
@@ -44,34 +44,47 @@ sudo apt-get install g++ cmake qtbase5-dev libcgal-dev
 cd area_graph_segment/
 mkdir build && cd build
 cmake ..
-make example_segmentation
+make area_graph_segmentation
 
 # Run
-./bin/example_segmentation <input_png> <resolution> <door_width> <corridor_width> <noise_percentage>
+./bin/area_graph_segmentation <input_png> \
+    --config ../config/params.yaml \
+    --output-dir ./run_output \
+    --dump-effective-config
 ```
 
 ## Parameter Description
 
-| Parameter | Description | Recommended Value |
-|-----------|-------------|-------------------|
-| `input_png` | Input PNG map file (white background, black obstacles) | - |
-| `resolution` | Map resolution (meters/pixel) | `0.05` |
-| `door_width` | Width of the widest door (-1 for automatic) | `-1` or `0.85` |
-| `corridor_width` | Width of the narrowest corridor (-1 for automatic) | `-1` or `2.7` |
-| `noise_percentage` | Noise percentage estimation | `1.5` |
+| Parameter | Description | Recommended Source |
+|-----------|-------------|--------------------|
+| `input_png` | Input PNG map file (white background, black obstacles) | positional |
+| `--config` | YAML file containing the effective segmentation/export parameters | `config/params.yaml` or `run_pipeline.py` output |
+| `--output-dir` | Directory for `clean.png`, `afterAlphaRemoval.png`, room graph, and osmAG | per-run output directory |
+| `--dump-effective-config` | Writes the final config consumed by downstream exporters | enabled for reproducibility |
+| `--resolution` | Map resolution in meters/pixel | CLI override for config |
+| `--root-lat/lon/pixel-x/pixel-y` | Geographic root node and its PNG pixel anchor | CLI override for config |
+| `--min-room-area` | Small-room filter threshold in square meters | CLI override for config |
 
 **Usage Examples**:
 ```bash
-# Automatic parameters (recommended)
-./bin/example_segmentation input.png 0.05 -1 -1 1.5
+# Config-driven run
+./bin/area_graph_segmentation input.png \
+    --config ../config/params.yaml \
+    --output-dir ./run_output \
+    --dump-effective-config
 
-# Manual door and corridor width specification
-./bin/example_segmentation input.png 0.05 0.85 2.7 1.5
+# Legacy positional format is still supported
+./bin/area_graph_segmentation input.png 0.05 -1 -1 1.5
 ```
 
 ## Advanced Configuration
 
 Adjustable through `config/params.yaml`:
+
+**Map Preprocessing**:
+- `resolution`: meters per pixel
+- `door_width`, `corridor_width`: physical scale used for dynamic alpha
+- `clean_input`, `remove_furniture`: optional preprocessing switches
 
 **Polygon Processing**:
 - `simplify_tolerance`: Simplification tolerance (default: 0.05)
@@ -85,6 +98,11 @@ Adjustable through `config/params.yaml`:
 - `root_node`: Geographic coordinate reference point settings
 - `level`: Floor information for OSM tags (default: "1")
 - `height_per_level`: Height per floor (meters) for calculating room and passage heights (default: 3.2)
+
+**AreaGraph Core**:
+- `area_graph.alpha`: dynamic/fixed alpha strategy and outside-removal alpha
+- `area_graph.vori_config`: Voronoi and topology cleanup thresholds
+- `area_graph.furniture_removal.max_polygon_length`: furniture-removal polygon length threshold
 
 ## Output Results
 

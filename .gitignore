@@ -38,6 +38,7 @@ build/
 bin/
 .idea/
 logs/
+runs/
 cmake-build-debug/
 test_output/
 .cursor/

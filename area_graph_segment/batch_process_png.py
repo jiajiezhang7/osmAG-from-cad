@@ -18,6 +18,11 @@ import sys
 import math
 from datetime import datetime
 
+try:
+    import yaml
+except ImportError:
+    yaml = None
+
 # 建筑类型配置
 BUILDING_CONFIGS = {
     "apartment": {
@@ -111,6 +116,84 @@ BUILDING_CONFIGS = {
         "min_room_area": 10.0
     }
 }
+
+def flatten_profile_config(profile):
+    """Convert nested pipeline YAML profile fields to batch script parameter names."""
+    flattened = {}
+    if not isinstance(profile, dict):
+        return flattened
+
+    map_preprocessing = profile.get("map_preprocessing", {})
+    if isinstance(map_preprocessing, dict):
+        key_map = {
+            "resolution": "resolution",
+            "door_width": "door_width",
+            "corridor_width": "corridor_width",
+            "noise_percent": "noise_percent",
+        }
+        for source_key, target_key in key_map.items():
+            if source_key in map_preprocessing:
+                flattened[target_key] = map_preprocessing[source_key]
+
+    polygon_processing = profile.get("polygon_processing", {})
+    if isinstance(polygon_processing, dict):
+        simplify = polygon_processing.get("simplify", {})
+        if isinstance(simplify, dict) and "tolerance" in simplify:
+            flattened["simplify_tolerance"] = simplify["tolerance"]
+
+        spike_removal = polygon_processing.get("spike_removal", {})
+        if isinstance(spike_removal, dict):
+            if "angle_threshold" in spike_removal:
+                flattened["spike_angle"] = spike_removal["angle_threshold"]
+            if "distance_threshold" in spike_removal:
+                flattened["spike_distance"] = spike_removal["distance_threshold"]
+
+        small_room_filter = polygon_processing.get("small_room_filter", {})
+        if isinstance(small_room_filter, dict) and "min_area" in small_room_filter:
+            flattened["min_room_area"] = small_room_filter["min_area"]
+
+    return flattened
+
+def load_building_configs_from_yaml(config_path):
+    """Load batch parameter profiles from repro YAML, falling back to built-ins."""
+    if not config_path:
+        return BUILDING_CONFIGS
+
+    if yaml is None:
+        print("警告: 未安装PyYAML，使用脚本内置建筑参数")
+        return BUILDING_CONFIGS
+
+    if not os.path.exists(config_path):
+        print(f"警告: 配置文件不存在 {config_path}，使用脚本内置建筑参数")
+        return BUILDING_CONFIGS
+
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = yaml.safe_load(f) or {}
+    except Exception as e:
+        print(f"警告: 无法读取配置文件 {config_path}: {e}，使用脚本内置建筑参数")
+        return BUILDING_CONFIGS
+
+    profiles = config.get("profiles", {})
+    if not isinstance(profiles, dict) or not profiles:
+        print(f"警告: 配置文件 {config_path} 未包含profiles，使用脚本内置建筑参数")
+        return BUILDING_CONFIGS
+
+    global_defaults = flatten_profile_config(config.get("global", {}))
+    loaded_configs = {}
+    for profile_name, profile in profiles.items():
+        base = BUILDING_CONFIGS.get(profile_name, BUILDING_CONFIGS["default"]).copy()
+        base.update(global_defaults)
+        base.update(flatten_profile_config(profile))
+        loaded_configs[profile_name] = base
+
+    if "default" not in loaded_configs:
+        base = BUILDING_CONFIGS["default"].copy()
+        base.update(global_defaults)
+        loaded_configs["default"] = base
+
+    print(f"已从配置文件加载 {len(loaded_configs)} 个建筑参数profile: {config_path}")
+    return loaded_configs
 
 def identify_building_type(filename):
     """根据文件名识别建筑类型"""
@@ -540,6 +623,8 @@ def parse_alpha_values(alpha_str):
 def main():
     parser = argparse.ArgumentParser(description='批量处理PNG文件，支持多Alpha值测试')
     parser.add_argument('input_dir', help='包含PNG文件的输入目录')
+    parser.add_argument('--config', '-c',
+                        help='包含profiles的YAML配置文件；未提供时使用脚本内置参数')
     parser.add_argument('--executable', '-e', 
                         default='./build/bin/area_graph_segmentation',
                         help='area_graph_segmentation可执行文件路径')
@@ -563,6 +648,9 @@ def main():
                         help='使用预设的Alpha值范围')
     
     args = parser.parse_args()
+
+    global BUILDING_CONFIGS
+    BUILDING_CONFIGS = load_building_configs_from_yaml(args.config)
     
     # 检查输入目录
     if not os.path.isdir(args.input_dir):
@@ -663,4 +751,4 @@ def main():
         print(">>> 实际运行时，每个处理都会生成对应的参数JSON文件")
 
 if __name__ == "__main__":
-    main() 
+    main()

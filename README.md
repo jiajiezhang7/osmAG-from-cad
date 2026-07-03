@@ -1,10 +1,8 @@
 # CAD2OSM Project Guide
 
-This project provides an automated workflow to convert CAD drawings (DWG format) into **Enhanced OpenStreetMap (OSM)** — referred to as **OSMAG Map** in this repository.
+This repository converts CAD floor plans into **osmAG** maps: standard OSM XML with indoor room geometry, passage topology, and optional semantic room names.
 
 ## Citation
-
-If you use this work in your research, please cite:
 
 ```bibtex
 @misc{zhang2025generationindooropenstreet,
@@ -18,100 +16,84 @@ If you use this work in your research, please cite:
 }
 ```
 
-**Paper**: [Generation of Indoor Open Street Maps for Robot Navigation from CAD Files](https://arxiv.org/abs/2507.00552)
+Paper: [Generation of Indoor Open Street Maps for Robot Navigation from CAD Files](https://arxiv.org/abs/2507.00552)
 
-**Code Availability**: The latest version of the code will be updated upon acceptance of the paper.
+## Reproducible Quick Start
 
-## End-to-End Pipeline
+The recommended reproducibility entrypoint starts from the tracked DXF subset under `cad2osm/data/web-cad/dxf/original`, avoiding the external DWG/ODA dependency.
 
-```
-DWG -> DXF -> Filtered DXF -> SVG -> PNG -> Area Graph Segment -> osmAG.osm
-```
-
-## Quick Start
-
-### Environment Setup
 ```bash
-# Install Python dependencies
-pip install ezdxf svgwrite svgpathtools cairosvg pillow numpy opencv-python pyproj
+# Build the AreaGraph executable
+cmake -S area_graph_segment -B area_graph_segment/build
+cmake --build area_graph_segment/build --target area_graph_segmentation -j
 
-# Install system dependencies (Ubuntu)
-sudo apt-get install g++ cmake qtbase5-dev libcgal-dev
+# Preview one tracked web-cad case without running the pipeline
+python3 run_pipeline.py --config config/repro_web_cad.yaml --case office --dry-run
+
+# Run one case end to end: DXF -> SVG/bounds -> PNG -> osmAG
+python3 run_pipeline.py --config config/repro_web_cad.yaml --case office
 ```
 
-### Basic Workflow
+Outputs are written to `runs/web-cad/<case>/`:
 
-1. **CAD Pre-processing** (see [cad2osm/README.md](cad2osm/README.md))
-   ```bash
-   cd cad2osm/script
-   python3 dwg2dxf_oda.py -i input.dwg -o output.dxf
-   python dxf_filter.py          # filter DXF file
-   python dxf2svg.py <filtered_dxf> <output_svg>
-   python svg2png.py <input_svg> <output_png>
-   ```
+| Output | Purpose |
+|--------|---------|
+| `effective_config.yaml` | The fully merged parameters actually used for this run |
+| `run_manifest.json` | Input files, generated outputs, commands, and run metadata |
+| `preprocess/*.svg`, `*.bounds.json`, `*.png` | CAD preprocessing artifacts |
+| `area_graph/*_osmAG.osm` | Main osmAG result |
+| `area_graph/*_roomGraph.png` | Visual segmentation result |
 
-2. **Area Graph Segmentation** (see [area_graph_segment/README.md](area_graph_segment/README.md))
-   ```bash
-   cd area_graph_segment/build
-   ./bin/example_segmentation <input_png> 0.05 -1 -1 1.5
-   ```
+The optional text naming stage is disabled by default:
 
-3. **Text Extraction & Room Naming** (see [cad2osm/script/text_extract_module/README.md](cad2osm/script/text_extract_module/README.md))
-   ```bash
-   cd cad2osm/script/text_extract_module
-   python text_extractor.py --mode full \
-       --dxf <dxf_file> \
-       --bounds <bounds_json> \
-       --osm <osmAG.osm> \
-       --output <output_osm> \
-       --visualize
-   ```
+```bash
+python3 run_pipeline.py --config config/repro_web_cad.yaml --case office --with-text
+```
+
+## Pipeline Stages
+
+```
+DXF -> SVG + bounds.json -> PNG -> AreaGraph segmentation -> osmAG.osm -> optional text naming
+```
+
+DWG conversion is still available through `cad2osm/script/core_process/dwg2dxf_oda.py`, but it requires ODA File Converter and is not part of the default reproducibility path.
+
+## Parameter Map
+
+Configuration priority is:
+
+```
+built-in defaults < config global defaults < case profile < case overrides < CLI overrides
+```
+
+Key parameters live in `config/repro_web_cad.yaml` and are copied into each run's `effective_config.yaml`.
+
+| Parameter | Unit | Used By | CLI Override |
+|-----------|------|---------|--------------|
+| `map_preprocessing.resolution` | m/pixel | PNG scale, AreaGraph thresholds, OSM export, area statistics | `--resolution` |
+| `map_preprocessing.door_width` / `corridor_width` | m | Dynamic alpha calculation | `--set map_preprocessing.door_width=...` |
+| `root_node.latitude/longitude/pixel_x/pixel_y` | deg / px | OSM coordinate conversion | `--root-lat`, `--root-lon`, `--root-pixel-x`, `--root-pixel-y` |
+| `polygon_processing.simplify.tolerance` | px | OSM polygon simplification | `--set polygon_processing.simplify.tolerance=...` |
+| `polygon_processing.small_room_filter.min_area` | m² | Room filtering | `--min-room-area` |
+| `area_graph.alpha.*` | px / mode | Room split granularity | `--set area_graph.alpha.fixed_value=...` |
+| `area_graph.vori_config.*` | px or m as named | Voronoi/topology cleanup | `--set area_graph.vori_config.<key>=...` |
+
+`area_graph_segment/config/params.yaml` remains the direct executable default. The unified runner writes an effective config and passes it to `area_graph_segmentation --config`.
 
 ## Main Components
 
-| Module | Purpose | Entry Script | Documentation |
-|--------|---------|-------------|---------------|
-| **cad2osm** | CAD file pre-processing & conversion | scripts in `cad2osm/script/` | [cad2osm/README.md](cad2osm/README.md) |
-| **area_graph_segment** | Area-graph segmentation & osmAG generation | `./bin/example_segmentation` | [area_graph_segment/README.md](area_graph_segment/README.md) |
-| **Text Extraction Module** | DXF text extraction & room naming | `text_extract_module/text_extractor.py` | [cad2osm/script/text_extract_module/README.md](cad2osm/script/text_extract_module/README.md) |
-| **GUI Tool** | Graphical user interface | `cad2osm/gui/start_gui.py` | [cad2osm/gui/README.md](cad2osm/gui/README.md) |
+| Module | Purpose | Entry |
+|--------|---------|-------|
+| `run_pipeline.py` | Reproducible DXF-to-osmAG orchestration | `python3 run_pipeline.py --case office` |
+| `cad2osm/script/core_process` | CAD preprocessing utilities | imported by `run_pipeline.py` or used directly |
+| `area_graph_segment` | AreaGraph segmentation and osmAG export | `area_graph_segment/build/bin/area_graph_segmentation` |
+| `cad2osm/script/text_extract_module` | Optional DXF text extraction and room naming | `text_extractor.py` |
 
-## Core Output
+## Dependencies
 
-The most important output of this project is **`osmAG.osm`**, which contains:
-
-- Room geometries and topological relationships
-- Semantic information (room names, types, etc.)
-- Standard OSM XML format, ready for navigation and path-planning tasks
-
-## Directory Layout
-```
-AGSeg/
-├── cad2osm/                    # CAD pre-processing utilities
-│   ├── script/                 # Conversion scripts
-│   │   └── text_extract_module/ # Text extraction sub-module
-│   ├── gui/                    # Graphical interface
-│   └── config/                 # Configuration files
-├── area_graph_segment/         # Area-graph segmentation
-│   ├── src/                    # Source code
-│   ├── config/                 # Configuration files
-│   └── dataset/                # Test datasets
-└── osmAG_doc/                  # osmAG specification documents
+```bash
+pip install ezdxf svgwrite svgpathtools cairosvg pillow numpy opencv-python pyproj pyyaml
+sudo apt-get install g++ cmake qtbase5-dev libcgal-dev
 ```
 
-## Notes
-
-1. **File format**: Ensure DWG/DXF files follow the correct layer-naming conventions.
-2. **Intermediate files**: Keep intermediate artifacts from each step to aid debugging.
-3. **Parameter tuning**: Adjust resolution, door width, corridor width, etc., to match specific architectural drawings.
-4. **Coordinate system**: Configure the proper geographic reference point.
-
-## Troubleshooting Checklist
-
-- [ ] Python environment and packages installed correctly
-- [ ] System dependencies (cmake, Qt, CGAL) installed correctly
-- [ ] Input file formats and paths are correct
-- [ ] Layer naming conforms to conventions
-- [ ] Configuration parameters are reasonable
-
-For additional help, please refer to the detailed documentation in each sub-directory.
+For deeper module-level details, see `area_graph_segment/README.md`, `cad2osm/README-zh.md`, and `cad2osm/script/text_extract_module/README.md`.

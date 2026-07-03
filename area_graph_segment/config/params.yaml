@@ -7,6 +7,12 @@ map_preprocessing:
   noise_percent: 1.5   # 噪声百分比
   remove_furniture: true  # 是否执行家具移除
 
+png_dimensions:
+  # 可选元数据。run_pipeline.py 会根据实际PNG写入effective_config.yaml。
+  width:
+  height:
+  resolution: 0.044
+
 # root_node坐标配置，小数点后11位
 root_node:
   latitude: 31.17947960435
@@ -57,6 +63,27 @@ polygon_processing:
 # 坐标转换参数
 coordinate_conversion:
   padding_ratio: 0.03  # 边缘空隙比例，默认为3%，用于dxf2svg、extract_room_polygons等
+
+# AreaGraph核心参数。过去部分参数在C++入口中硬编码，现在集中在配置中。
+area_graph:
+  alpha:
+    mode: dynamic        # dynamic: 由door/corridor/resolution计算；fixed: 使用fixed_value
+    fixed_value:
+    width_offset: 0.1
+    outside_removal_alpha: 3600
+  furniture_removal:
+    max_polygon_length: 80
+  vori_config:
+    first_dead_end_removal_distance: 100000
+    second_dead_end_removal_distance: -100000
+    third_dead_end_removal_distance_meters: 0.25
+    fourth_dead_end_removal_distance: 8
+    topo_graph_angle_calc_end_distance: 10
+    topo_graph_angle_calc_start_distance: 3
+    topo_graph_angle_calc_step_size: 0.1
+    topo_graph_distance_to_join_vertices: 4
+    topo_graph_mark_as_feature_edge_length: 20
+    voronoi_minimum_distance_to_obstacle_meters: 0.25
 
 # 楼层信息
 level: "1"  # 默认楼层值，用于OSM标签

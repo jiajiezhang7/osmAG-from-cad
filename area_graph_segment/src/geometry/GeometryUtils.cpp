@@ -6,6 +6,21 @@
 namespace RMG {
 namespace GeometryUtils {
 
+namespace {
+
+struct RootNodeConversionConfig {
+    double pixel_x = 3804.0;
+    double pixel_y = 2801.0;
+    double resolution = 0.044;
+};
+
+RootNodeConversionConfig& rootNodeConversionConfig() {
+    static RootNodeConversionConfig config;
+    return config;
+}
+
+} // namespace
+
 // 判断两个点是否相等（考虑浮点误差）
 bool equalLineVertex(const topo_geometry::point &a, const topo_geometry::point &b) {
     const double EPSILON = 1e-6;
@@ -31,36 +46,20 @@ std::pair<double, double> cartesianToLatLon(double x, double y, double root_lat,
     // 创建参考点（root_node的经纬度）
     std::array<double, 2> reference{root_lat, root_lon};
 
-    // root_node 在 PNG 中的像素位置
-    // 使用静态局部变量来存储像素位置，这样可以通过 setRootNodePixelPosition 函数来更新
-    static double& root_pixel_x = []() -> double& {
-        static double x = 3804.0; // 默认值，根据测量的 root_node 像素 x 坐标
-        return x;
-    }();
-
-    static double& root_pixel_y = []() -> double& {
-        static double y = 2801.0; // 默认值，根据测量的 root_node 像素 y 坐标
-        return y;
-    }();
-
-    // 获取当前设置的分辨率（米/像素）
-    static double& resolution = []() -> double& {
-        static double res = 0.044; // 默认分辨率值
-        return res;
-    }();
+    const RootNodeConversionConfig& config = rootNodeConversionConfig();
 
     // 将输入的坐标相对于 root_node 的像素位置进行调整
     // 计算相对于 root_node 的偏移量
-    double relativeX = x - root_pixel_x;
-    double relativeY = y - root_pixel_y;
+    double relativeX = x - config.pixel_x;
+    double relativeY = y - config.pixel_y;
 
     // 注意：在图像坐标系中，y轴是从上到下的，而在地理坐标系中，纬度是从下到上的
     // 因此，我们需要翻转 y 坐标
     relativeY = -relativeY; // 翻转 y 坐标，使其符合地理坐标系的方向
 
     // 应用分辨率缩放因子，将像素坐标转换为实际的米单位
-    relativeX *= resolution;
-    relativeY *= resolution;
+    relativeX *= config.resolution;
+    relativeY *= config.resolution;
 
     // 创建笛卡尔坐标（相对于 root_node）
     std::array<double, 2> cartesian{relativeX, relativeY};
@@ -73,32 +72,16 @@ std::pair<double, double> cartesianToLatLon(double x, double y, double root_lat,
 
 // 设置 root_node 在 PNG 中的像素位置
 void setRootNodePixelPosition(double x, double y) {
-    // 更新 cartesianToLatLon 函数中使用的静态变量
-    static double& root_pixel_x_ref = []() -> double& {
-        static double x = 3804.0;
-        return x;
-    }();
-
-    static double& root_pixel_y_ref = []() -> double& {
-        static double y = 2801.0;
-        return y;
-    }();
-
-    root_pixel_x_ref = x;
-    root_pixel_y_ref = y;
+    RootNodeConversionConfig& config = rootNodeConversionConfig();
+    config.pixel_x = x;
+    config.pixel_y = y;
 
     std::cout << "Root node pixel position set to (" << x << ", " << y << ")" << std::endl;
 }
 
 // 设置 PNG 图像的分辨率（米/像素）
 void setResolution(double resolution) {
-    // 更新 cartesianToLatLon 函数中使用的静态分辨率变量
-    static double& resolution_ref = []() -> double& {
-        static double res = 0.044; // 默认分辨率值
-        return res;
-    }();
-
-    resolution_ref = resolution;
+    rootNodeConversionConfig().resolution = resolution;
 
     std::cout << "Resolution set to " << resolution << " meters/pixel" << std::endl;
 }

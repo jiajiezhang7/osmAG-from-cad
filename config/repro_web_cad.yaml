@@ -1,0 +1,159 @@
+pipeline:
+  output_root: runs/web-cad
+  area_graph_executable: area_graph_segment/build/bin/area_graph_segmentation
+  text_enabled: false
+
+preprocessing:
+  target_size: 4000
+  line_thickness: 1
+  enable_wall_filling: false
+  wall_gap_size: medium
+  wall_min_area: 100
+
+global:
+  map_preprocessing:
+    clean_input: false
+    resolution: 0.044
+    door_width: 1.0
+    corridor_width: 1.5
+    noise_percent: 1.5
+    remove_furniture: true
+  root_node:
+    latitude: 31.17947960435
+    longitude: 121.59139728509
+    pixel_x: 3804.0
+    pixel_y: 2801.0
+  png_dimensions:
+    width:
+    height:
+    resolution: 0.044
+  polygon_processing:
+    simplify:
+      enabled: true
+      tolerance: 1.2
+    spike_removal:
+      enabled: true
+      angle_threshold: 15.0
+      distance_threshold: 0.30
+    small_room_filter:
+      enabled: true
+      min_area: 10.0
+    small_room_merge:
+      enabled: false
+      min_area: 10.0
+      max_merge_distance: 3.0
+  coordinate_conversion:
+    padding_ratio: 0.03
+  area_graph:
+    alpha:
+      mode: dynamic
+      fixed_value:
+      width_offset: 0.1
+      outside_removal_alpha: 3600
+    furniture_removal:
+      max_polygon_length: 80
+    vori_config:
+      first_dead_end_removal_distance: 100000
+      second_dead_end_removal_distance: -100000
+      third_dead_end_removal_distance_meters: 0.25
+      fourth_dead_end_removal_distance: 8
+      topo_graph_angle_calc_end_distance: 10
+      topo_graph_angle_calc_start_distance: 3
+      topo_graph_angle_calc_step_size: 0.1
+      topo_graph_distance_to_join_vertices: 4
+      topo_graph_mark_as_feature_edge_length: 20
+      voronoi_minimum_distance_to_obstacle_meters: 0.25
+  level: "1"
+  height_per_level: 3.2
+
+profiles:
+  default:
+    map_preprocessing:
+      resolution: 0.044
+      door_width: 1.0
+      corridor_width: 1.5
+      noise_percent: 1.5
+    polygon_processing:
+      simplify:
+        tolerance: 1.3
+      spike_removal:
+        angle_threshold: 15.0
+        distance_threshold: 0.30
+      small_room_filter:
+        min_area: 10.0
+  office:
+    map_preprocessing:
+      resolution: 0.035
+      door_width: 1.0
+      corridor_width: 1.5
+      noise_percent: 1.2
+    polygon_processing:
+      simplify:
+        tolerance: 1.2
+      spike_removal:
+        angle_threshold: 12.0
+        distance_threshold: 0.20
+      small_room_filter:
+        min_area: 5.0
+  apartment:
+    map_preprocessing:
+      resolution: 0.04
+      door_width: 0.9
+      corridor_width: 1.2
+      noise_percent: 1.5
+    polygon_processing:
+      simplify:
+        tolerance: 1.0
+      spike_removal:
+        angle_threshold: 15.0
+        distance_threshold: 0.25
+      small_room_filter:
+        min_area: 8.0
+  residential:
+    map_preprocessing:
+      resolution: 0.04
+      door_width: 0.8
+      corridor_width: 1.0
+      noise_percent: 1.8
+    polygon_processing:
+      simplify:
+        tolerance: 0.8
+      spike_removal:
+        angle_threshold: 18.0
+        distance_threshold: 0.30
+      small_room_filter:
+        min_area: 5.0
+  school:
+    map_preprocessing:
+      resolution: 0.045
+      door_width: 1.2
+      corridor_width: 2.5
+      noise_percent: 1.0
+    polygon_processing:
+      simplify:
+        tolerance: 1.5
+      spike_removal:
+        angle_threshold: 10.0
+        distance_threshold: 0.15
+      small_room_filter:
+        min_area: 20.0
+
+cases:
+  office:
+    profile: office
+    dxf: cad2osm/data/web-cad/dxf/original/office.dxf
+  schema-ufficio-1:
+    profile: office
+    dxf: cad2osm/data/web-cad/dxf/original/schema-ufficio-1.dxf
+  schema-ufficio-4:
+    profile: office
+    dxf: cad2osm/data/web-cad/dxf/original/schema-ufficio-4.dxf
+  schema-ufficio-15:
+    profile: office
+    dxf: cad2osm/data/web-cad/dxf/original/schema-ufficio-15.dxf
+  residential_building_1:
+    profile: residential
+    dxf: cad2osm/data/web-cad/dxf/original/residential_building_1.dxf
+  Universita-pianta-02:
+    profile: school
+    dxf: cad2osm/data/web-cad/dxf/original/Universita-pianta-02.dxf

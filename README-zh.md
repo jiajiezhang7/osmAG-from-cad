@@ -1,10 +1,8 @@
 # CAD2OSM 代码库
 
-本代码库实现了从CAD图纸（DWG格式）到Enhanced OpenStreetMap（OSM） - OSMAG Map的自动化转换流程。
+本代码库将 CAD 建筑平面图转换为 **osmAG** 地图：以标准 OSM XML 表达室内房间几何、通道拓扑关系，并可选加入文本语义房间名。
 
 ## 引用
-
-如果您在研究中使用了此工作，请引用：
 
 ```bibtex
 @misc{zhang2025generationindooropenstreet,
@@ -18,100 +16,88 @@
 }
 ```
 
-**论文链接**: [Generation of Indoor Open Street Maps for Robot Navigation from CAD Files](https://arxiv.org/abs/2507.00552)
+论文链接：[Generation of Indoor Open Street Maps for Robot Navigation from CAD Files](https://arxiv.org/abs/2507.00552)
 
-**代码可用性**：最新版本的代码将在论文接收（upon acceptance）后更新。
+## 快速复现
 
-## 整体流程
+推荐复现入口从已追踪的 DXF 子集开始，路径为 `cad2osm/data/web-cad/dxf/original`，这样可以避开 DWG 到 DXF 所需的 ODA 外部依赖。
 
-```
-DWG -> DXF -> Filtered DXF -> SVG -> PNG -> Area Graph Segment -> osmAG.osm
-```
-
-## 快速开始
-
-### 环境准备
 ```bash
-# 安装Python依赖
-pip install ezdxf svgwrite svgpathtools cairosvg pillow numpy opencv-python pyproj
+# 构建 AreaGraph 可执行文件
+cmake -S area_graph_segment -B area_graph_segment/build
+cmake --build area_graph_segment/build --target area_graph_segmentation -j
 
-# 安装系统依赖（Ubuntu）
-sudo apt-get install g++ cmake qtbase5-dev libcgal-dev
+# 预览一个 web-cad case，不实际运行
+python3 run_pipeline.py --config config/repro_web_cad.yaml --case office --dry-run
+
+# 单 case 端到端复现：DXF -> SVG/bounds -> PNG -> osmAG
+python3 run_pipeline.py --config config/repro_web_cad.yaml --case office
 ```
 
-### 基本使用流程
+输出位于 `runs/web-cad/<case>/`：
 
-1. **CAD预处理**（详见 [cad2osm/README.md](cad2osm/README.md)）
-   ```bash
-   cd cad2osm/script
-   python3 dwg2dxf_oda.py -i input.dwg -o output.dxf
-   python dxf_filter.py  # 过滤DXF文件
-   python dxf2svg.py <filtered_dxf> <output_svg>
-   python svg2png.py <input_svg> <output_png>
-   ```
+| 输出 | 说明 |
+|------|------|
+| `effective_config.yaml` | 本次运行真正生效的完整参数 |
+| `run_manifest.json` | 输入、输出、命令和运行元数据 |
+| `preprocess/*.svg`, `*.bounds.json`, `*.png` | CAD 预处理结果 |
+| `area_graph/*_osmAG.osm` | 核心 osmAG 输出 |
+| `area_graph/*_roomGraph.png` | 分割可视化结果 |
 
-2. **区域图分割**（详见 [area_graph_segment/README.md](area_graph_segment/README.md)）
-   ```bash
-   cd area_graph_segment/build
-   ./bin/example_segmentation <input_png> 0.05 -1 -1 1.5
-   ```
+文本语义模块默认关闭，可按需开启：
 
-3. **文本提取与房间命名**（详见 [cad2osm/script/text_extract_module/README.md](cad2osm/script/text_extract_module/README.md)）
-   ```bash
-   cd cad2osm/script/text_extract_module
-   python text_extractor.py --mode full \
-       --dxf <dxf_file> \
-       --bounds <bounds_json> \
-       --osm <osmAG.osm> \
-       --output <output_osm> \
-       --visualize
-   ```
+```bash
+python3 run_pipeline.py --config config/repro_web_cad.yaml --case office --with-text
+```
+
+## Pipeline 阶段
+
+```
+DXF -> SVG + bounds.json -> PNG -> AreaGraph segmentation -> osmAG.osm -> optional text naming
+```
+
+DWG 转换仍由 `cad2osm/script/core_process/dwg2dxf_oda.py` 支持，但需要 ODA File Converter，因此不放入默认复现路径。
+
+## 参数地图
+
+配置优先级为：
+
+```
+内置默认值 < YAML global < case profile < case overrides < CLI overrides
+```
+
+关键参数集中在 `config/repro_web_cad.yaml`，每次运行都会写入 `effective_config.yaml`。
+
+| 参数 | 单位 | 影响阶段 | CLI 覆盖 |
+|------|------|----------|----------|
+| `map_preprocessing.resolution` | m/pixel | PNG 尺度、AreaGraph 阈值、OSM 导出、面积统计 | `--resolution` |
+| `map_preprocessing.door_width/corridor_width` | m | 动态 alpha 计算 | `--set map_preprocessing.door_width=...` |
+| `root_node.latitude/longitude/pixel_x/pixel_y` | deg / px | OSM 坐标转换 | `--root-lat`, `--root-lon`, `--root-pixel-x`, `--root-pixel-y` |
+| `polygon_processing.simplify.tolerance` | px | OSM 多边形简化 | `--set polygon_processing.simplify.tolerance=...` |
+| `polygon_processing.small_room_filter.min_area` | m2 | 小房间过滤 | `--min-room-area` |
+| `area_graph.alpha.*` | px / mode | 房间分割粒度 | `--set area_graph.alpha.fixed_value=...` |
+| `area_graph.vori_config.*` | px 或字段名中的 m | Voronoi/拓扑清理 | `--set area_graph.vori_config.<key>=...` |
+
+`area_graph_segment/config/params.yaml` 仍是直接运行 `area_graph_segmentation` 时的默认配置。统一入口会生成 effective config 并通过 `--config` 传给 C++ 程序。
+
+## 数据与 Git 策略
+
+当前只追踪代表性的 web-cad 子集，不默认加入全部 24 张 web-cad。新的复现实验输出写入 `runs/`，该目录已被 Git 忽略。
 
 ## 主要组件
 
-| 组件 | 功能 | 统一入口脚本 | 详细文档 |
-|------|------|-------------|----------|
-| **cad2osm** | CAD文件预处理和转换 | `cad2osm/script/` 下的各个脚本 | [cad2osm/README.md](cad2osm/README.md) |
-| **area_graph_segment** | 区域图分割和osmAG生成 | `./bin/example_segmentation` | [area_graph_segment/README.md](area_graph_segment/README.md) |
-| **文本提取模块** | DXF文本提取和房间命名 | `text_extract_module/text_extractor.py` | [cad2osm/script/text_extract_module/README.md](cad2osm/script/text_extract_module/README.md) |
-| **GUI工具** | 图形界面操作工具 | `cad2osm/gui/start_gui.py` | [cad2osm/gui/README.md](cad2osm/gui/README.md) |
+| 组件 | 功能 | 入口 |
+|------|------|------|
+| `run_pipeline.py` | 可复现的 DXF 到 osmAG 统一编排 | `python3 run_pipeline.py --case office` |
+| `cad2osm/script/core_process` | CAD 预处理工具 | 由 `run_pipeline.py` 调用，也可单独使用 |
+| `area_graph_segment` | AreaGraph 分割与 osmAG 导出 | `area_graph_segment/build/bin/area_graph_segmentation` |
+| `cad2osm/script/text_extract_module` | 可选 DXF 文本提取与房间命名 | `text_extractor.py` |
 
-## 核心输出
+## 依赖
 
-**osmAG.osm** 是本工程最重要的输出结果，包含：
-- 房间几何形状和拓扑关系
-- 语义信息（房间名称、类型等）
-- 标准OSM XML格式，便于导航和路径规划
-
-## 目录结构
-```
-AGSeg/
-├── cad2osm/                    # CAD预处理工具
-│   ├── script/                 # 转换脚本
-│   │   └── text_extract_module/ # 文本提取模块
-│   ├── gui/                    # 图形界面
-│   └── config/                 # 配置文件
-├── area_graph_segment/         # 区域图分割
-│   ├── src/                    # 源代码
-│   ├── config/                 # 配置文件
-│   └── dataset/                # 测试数据
-└── osmAG_doc/                  # osmAG标准文档
+```bash
+pip install ezdxf svgwrite svgpathtools cairosvg pillow numpy opencv-python pyproj pyyaml
+sudo apt-get install g++ cmake qtbase5-dev libcgal-dev
 ```
 
-## 注意事项
-
-1. **文件格式**：确保DWG/DXF文件使用正确的图层命名规范
-2. **中间文件**：建议保留每个步骤的中间文件，便于问题定位
-3. **参数调优**：根据具体建筑图纸调整分辨率、门宽、走廊宽度等参数
-4. **坐标系统**：注意配置正确的地理坐标参考点
-
-## 故障排除
-
-常见问题检查清单：
-- [ ] Python环境及依赖包是否正确安装
-- [ ] 系统依赖（cmake, Qt, CGAL）是否正确安装
-- [ ] 输入文件格式和路径是否正确
-- [ ] 图层命名是否符合规范
-- [ ] 配置文件参数是否合理
-
-如需更多帮助，请参考各子目录下的详细文档。
+更多模块细节请见 `area_graph_segment/README.md`、`cad2osm/README-zh.md` 和 `cad2osm/script/text_extract_module/README.md`。

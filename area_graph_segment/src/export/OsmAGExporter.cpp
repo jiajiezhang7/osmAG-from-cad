@@ -9,9 +9,28 @@
 #include <map>
 #include <set>
 #include <algorithm>
+#include <unordered_set>
 
 namespace RMG {
 namespace OsmAGExporter {
+
+namespace {
+
+double getConfiguredResolution(double fallback = 0.044) {
+    try {
+        auto& params = ParamsLoader::getInstance();
+        if (params.params["map_preprocessing"] && params.params["map_preprocessing"]["resolution"]) {
+            return params.params["map_preprocessing"]["resolution"].as<double>();
+        }
+        if (params.params["png_dimensions"] && params.params["png_dimensions"]["resolution"]) {
+            return params.params["png_dimensions"]["resolution"].as<double>();
+        }
+    } catch (...) {}
+
+    return fallback;
+}
+
+} // namespace
 
 // 简化所有房间多边形
 void simplifyPolygons(AreaGraph* areaGraph, double epsilon, const std::vector<topo_geometry::point>* preservePoints) {
@@ -119,7 +138,8 @@ void exportToOsmAG(AreaGraph* areaGraph,
     } catch (...) {}
     if (filterEnabled) {
         std::cout << "开始过滤小房间..." << std::endl;
-        double pixelToSqMeter = 0.044 * 0.044;
+        double resolution = getConfiguredResolution();
+        double pixelToSqMeter = resolution * resolution;
         double minRoomAreaInPixels = filterMinAreaSqMeter / pixelToSqMeter;
         size_t originalCount = areaGraph->originSet.size();
         
