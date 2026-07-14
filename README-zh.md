@@ -18,9 +18,14 @@
 
 论文链接：[Generation of Indoor Open Street Maps for Robot Navigation from CAD Files](https://arxiv.org/abs/2507.00552)
 
-## CAD 数据政策
+## 数据可用性与可复现性
 
-本仓库不分发 CAD 源文件或其派生材料。请仅从仓库外的本地路径提供你有权使用的文件。尤其不要提交从 ArchWeb 下载的材料；其[条款与条件](https://www.archweb.com/en/terms-and-conditions/)限制再分发。
+本仓库提供 CAD-to-osmAG 流程的源代码和配置文件。实验中使用的具体 CAD 建筑平面图不在本仓库中重新分发，原因如下：
+
+1. 上海科技大学校园建筑平面图属于未公开的机构建筑数据，未经授权不能发布。
+2. ArchWeb 建筑平面图获取自 ArchWeb，仍受 ArchWeb 的版权及其当前[条款与条件](https://www.archweb.com/en/terms-and-conditions/)约束；这些条款不允许我们重新分发或重新发布下载的 CAD 文件。对这些图纸感兴趣的研究人员应自行从 ArchWeb 获取，并遵守其当前使用条款。
+
+为在不嵌入受保护数据的前提下支持可复现性，本仓库提供处理代码、配置模板和输入占位路径。用户应仅通过仓库外的本地路径提供其有权使用的 CAD 文件。受保护的原始 CAD 文件及其派生材料不得提交到本仓库。
 
 ## 快速复现
 

@@ -18,9 +18,14 @@ This repository converts CAD floor plans into **osmAG** maps: standard OSM XML w
 
 Paper: [Generation of Indoor Open Street Maps for Robot Navigation from CAD Files](https://arxiv.org/abs/2507.00552)
 
-## CAD Data Policy
+## Data Availability and Reproducibility
 
-This repository does not distribute CAD source files or their derived artifacts. Supply only files you are authorized to use from a local path outside the repository. In particular, do not commit material downloaded from ArchWeb; its [Terms and Conditions](https://www.archweb.com/en/terms-and-conditions/) restrict redistribution.
+This repository provides the source code and configuration files for the CAD-to-osmAG pipeline. The exact CAD floor plans used in the experiments are not redistributed for the following reasons:
+
+1. The ShanghaiTech campus floor plans are non-public institutional building data and cannot be released without authorization.
+2. The ArchWeb floor plans were obtained from ArchWeb and remain subject to ArchWeb's copyright and current [Terms and Conditions](https://www.archweb.com/en/terms-and-conditions/), which do not permit us to redistribute or republish the downloaded CAD files. Researchers interested in these plans should obtain them independently from ArchWeb and comply with its current terms of use.
+
+To support reproducibility without embedding protected data, this repository includes processing code, configuration templates, and placeholder input paths. Users should provide only CAD files they are authorized to use from a local path outside the repository. Original protected CAD files and their derived artifacts must not be committed to this repository.
 
 ## Reproducible Quick Start
 
