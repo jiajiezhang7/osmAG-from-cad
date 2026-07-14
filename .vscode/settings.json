@@ -62,5 +62,5 @@
         "utility": "cpp",
         "variant": "cpp"
     },
-    "cmake.sourceDirectory": "/home/jay/AGSeg_ws/AGSeg/area_graph_segment"
+    "cmake.sourceDirectory": "${workspaceFolder}/area_graph_segment"
 }

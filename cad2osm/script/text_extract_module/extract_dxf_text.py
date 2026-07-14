@@ -203,13 +203,13 @@ def load_yaml_config(config_path):
 
 def main():
     parser = argparse.ArgumentParser(description='Extract decoded TEXT, MTEXT, or ATTRIB text from a specific layer in DXF files.')
-    parser.add_argument('--input-dir', type=str, default='/home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/dxf/original',
+    parser.add_argument('--input-dir', type=str, default='/path/to/authorized/dxf/input',
                         help='Directory containing the input DXF files.')
-    parser.add_argument('--output-dir', type=str, default='/home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/extract_text',
+    parser.add_argument('--output-dir', type=str, default='/path/to/local/text/output',
                         help='Directory to save the output JSON files.')
     parser.add_argument('--layer', type=str, default='I—平面—文字',
                         help='The specific layer to extract text from.')
-    parser.add_argument('--config', type=str, default='/home/jay/AGSeg_ws/AGSeg/area_graph_segment/config/params.yaml',
+    parser.add_argument('--config', type=str, default='/path/to/repository/area_graph_segment/config/params.yaml',
                         help='配置文件路径')
 
     args = parser.parse_args()

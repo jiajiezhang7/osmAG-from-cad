@@ -9,8 +9,8 @@ import os
 import sys
 
 # --- 用户可修改路径 ---
-INPUT_FILE = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/SEM/dxf/SEM-F1-Maxu.dxf"
-OUTPUT_FILE = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/SEM/dxf/SEM-F1_Maxu_flattened.dxf"
+INPUT_FILE = "/path/to/authorized/dxf/input.dxf"
+OUTPUT_FILE = "/path/to/local/dxf/output.dxf"
 # -----------------------
 
 def explode_inserts(input_file: str, output_file: str):

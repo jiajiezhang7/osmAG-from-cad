@@ -2,8 +2,8 @@ import os
 import re
 
 # --- 配置 ---
-MANUAL_FILTER_DIR = '/home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST-layer-info-filtered/'
-SCRIPT_FILTER_DIR = '/home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST-layer-info-filtered-trial/'
+MANUAL_FILTER_DIR = '/path/to/manual/layer-info/'
+SCRIPT_FILTER_DIR = '/path/to/generated/layer-info/'
 FLOORS = ['F1', 'F2', 'F3', 'F4', 'F5']
 MANUAL_FILE_PREFIX = 'layer-info-filtered-sist-'
 SCRIPT_FILE_PREFIX = 'layer-info-filtered-SIST-'

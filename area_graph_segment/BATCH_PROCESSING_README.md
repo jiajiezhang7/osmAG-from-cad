@@ -53,8 +53,8 @@ cd area_graph_segment
 # Process all PNG files in a specified directory
 python3 batch_process_png.py /path/to/png/directory
 
-# Example: Process PNG files from cad2osm
-python3 batch_process_png.py ../cad2osm/data/web-cad/img/png_manual_filter
+# Example: Process authorized local PNG files kept outside this repository
+python3 batch_process_png.py /path/to/cad-derived/pngs
 ```
 
 ### 2. Preview Mode
@@ -62,23 +62,23 @@ python3 batch_process_png.py ../cad2osm/data/web-cad/img/png_manual_filter
 Use dry-run mode to preview commands before execution:
 
 ```bash
-python3 batch_process_png.py ../cad2osm/data/web-cad/img/png_manual_filter --dry-run
+python3 batch_process_png.py /path/to/cad-derived/pngs --dry-run
 ```
 
 ### 3. File Filtering
 
 ```bash
 # Process only files containing "apartment"
-python3 batch_process_png.py ../cad2osm/data/web-cad/img/png_manual_filter --filter apartment
+python3 batch_process_png.py /path/to/cad-derived/pngs --filter apartment
 
 # Skip files containing "hotel"
-python3 batch_process_png.py ../cad2osm/data/web-cad/img/png_manual_filter --skip hotel
+python3 batch_process_png.py /path/to/cad-derived/pngs --skip hotel
 ```
 
 ### 4. Custom Executable Path
 
 ```bash
-python3 batch_process_png.py ../cad2osm/data/web-cad/img/png_manual_filter --executable ./bin/area_graph_segmentation
+python3 batch_process_png.py /path/to/cad-derived/pngs --executable ./bin/area_graph_segmentation
 ```
 
 ## Advanced Features: Multi-Alpha Testing
@@ -342,4 +342,4 @@ To add new building types or adjust parameters, modify the `BUILDING_CONFIGS` di
 - Multi-alpha testing creates significantly more output files
 - Use filtering options to process images in manageable batches
 - The script automatically handles image size variations and parameter scaling
-- Results should be evaluated visually to determine optimal segmentation quality 
+- Results should be evaluated visually to determine optimal segmentation quality

@@ -227,8 +227,8 @@ def verify_tags(file_path):
 
 if __name__ == "__main__":
     # 使用固定的文件路径
-    default_input = "/home/jay/AGSeg_ws/AGSeg/good-res/historical_museum/historical_museum460_merged_filtered_osmAG_texted.osm"
-    default_output = "/home/jay/AGSeg_ws/AGSeg/good-res/historical_museum/historical_museum460_merged_filtered_osmAG_texted_added_tags.osm"
+    default_input = "/path/to/input/map.osm"
+    default_output = "/path/to/output/map-with-renderer-tags.osm"
     
     input_file = input(f"请输入OSM文件路径 (默认: {default_input}): ").strip() or default_input
     output_file = input(f"请输入输出文件路径 (默认: {default_output}): ").strip() or default_output
@@ -251,4 +251,4 @@ if __name__ == "__main__":
     except FileNotFoundError:
         print("错误: 找不到输入文件")
     except Exception as e:
-        print(f"错误: {str(e)}") 
+        print(f"错误: {str(e)}")

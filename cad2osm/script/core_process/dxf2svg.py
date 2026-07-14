@@ -278,11 +278,11 @@ def dxf_to_svg(input_path, output_path, target_size=4000, config=None):  # 增�
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='将DXF文件转换为SVG格式')
-    parser.add_argument('--input-dir', type=str, default='/home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/dxf/manual_filter',
+    parser.add_argument('--input-dir', type=str, default='/path/to/authorized/dxf/input',
                         help='包含DXF文件的输入目录')
-    parser.add_argument('--output-dir', type=str, default='/home/jay/AGSeg_ws/AGSeg/cad2osm/data/SIST/img/svg_manual_filter',
+    parser.add_argument('--output-dir', type=str, default='/path/to/local/svg/output',
                         help='保存SVG文件的输出目录')
-    parser.add_argument('--config', type=str, default='/home/jay/AGSeg_ws/AGSeg/cad2osm/config/params.yaml',
+    parser.add_argument('--config', type=str, default='/path/to/repository/cad2osm/config/params.yaml',
                         help='配置文件路径')
     args = parser.parse_args()
     

@@ -347,7 +347,7 @@ def main():
     
     # 配置文件参数
     parser.add_argument('-c', '--config', 
-                    default='/home/jay/AGSeg_ws/AGSeg/cad2osm/script/layer_filter/cad_layers_to_keep.json',
+                    default='/path/to/repository/cad2osm/script/layer_filter/cad_layers_to_keep.json',
                     help='JSON配置文件路径 (默认: cad_layers_to_keep.json)')
     
     # 标准选择参数

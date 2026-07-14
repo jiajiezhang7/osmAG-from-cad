@@ -254,9 +254,9 @@ def main():
     主函数 - 批量处理DXF文件
     """
     # --- 定义输入输出目录 --- 
-    input_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/SEM/dxf"
-    output_dxf_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/SEM/dxf/auto_filter"
-    output_layer_info_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/SEM/layer_info/auto_filter"
+    input_dir = "/path/to/authorized/dxf/input"
+    output_dxf_dir = "/path/to/local/filtered-dxf/output"
+    output_layer_info_dir = "/path/to/local/layer-info/output"
     # -------------------------
     
     # 确保输出目录存在

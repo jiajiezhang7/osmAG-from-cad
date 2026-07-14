@@ -315,8 +315,8 @@ def verify_passages(file_path):
 
 if __name__ == "__main__":
     # 获取用户输入的文件路径，或使用默认路径
-    default_input = "/home/jay/osm_vis_ws/data/SIST1_SEM_semanic_biggestever_right_height.osm"  # 替换为实际的默认输入文件路径
-    default_output = "/home/jay/osm_vis_ws/data/SIST1_SEM_semanic_biggestever_with_vertical_passages.osm"  # 替换为实际的默认输出文件路径
+    default_input = "/path/to/input/map.osm"  # 替换为实际的默认输入文件路径
+    default_output = "/path/to/output/map-with-vertical-passages.osm"  # 替换为实际的默认输出文件路径
     
     input_file = input(f"请输入OSM文件路径 (默认: {default_input}): ").strip() or default_input
     output_file = input(f"请输入输出文件路径 (默认: {default_output}): ").strip() or default_output

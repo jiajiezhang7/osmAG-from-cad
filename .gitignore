@@ -46,3 +46,23 @@ test_output/
 good-res/
 result_anaylsis/
 cad2osm/script/core_process/dxf_filter.py
+
+# CAD source files are intentionally excluded from this public repository.
+*.[dD][wW][gG]
+*.[dD][xX][fF]
+*.[dD][gG][nN]
+*.[dD][wW][fF]
+*.[iI][fF][cC]
+*.[sS][tT][eE][pP]
+*.[sS][tT][pP]
+*.[iI][gG][eE][sS]
+*.[iI][gG][sS]
+*.[rR][vV][tT]
+*.[rR][fF][aA]
+*.[sS][kK][pP]
+*.[3][dD][mM]
+
+# CAD-derived local inputs and generated outputs must stay outside Git.
+/cad2osm/data/
+/area_graph_segment/input/
+/area_graph_segment/output/

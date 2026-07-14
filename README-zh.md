@@ -18,23 +18,27 @@
 
 论文链接：[Generation of Indoor Open Street Maps for Robot Navigation from CAD Files](https://arxiv.org/abs/2507.00552)
 
+## CAD 数据政策
+
+本仓库不分发 CAD 源文件或其派生材料。请仅从仓库外的本地路径提供你有权使用的文件。尤其不要提交从 ArchWeb 下载的材料；其[条款与条件](https://www.archweb.com/en/terms-and-conditions/)限制再分发。
+
 ## 快速复现
 
-推荐复现入口从已追踪的 DXF 子集开始，路径为 `cad2osm/data/web-cad/dxf/original`，这样可以避开 DWG 到 DXF 所需的 ODA 外部依赖。
+复现入口从示例配置读取已获授权的本地 DXF 路径。请复制 `config/repro_local_cad.example.yaml`、替换占位路径，并将源数据保存在仓库外。
 
 ```bash
 # 构建 AreaGraph 可执行文件
 cmake -S area_graph_segment -B area_graph_segment/build
 cmake --build area_graph_segment/build --target area_graph_segmentation -j
 
-# 预览一个 web-cad case，不实际运行
-python3 run_pipeline.py --config config/repro_web_cad.yaml --case office --dry-run
+# 预览配置中的本地 case，不实际运行
+python3 run_pipeline.py --config config/repro_local_cad.example.yaml --case example --dry-run
 
 # 单 case 端到端复现：DXF -> SVG/bounds -> PNG -> osmAG
-python3 run_pipeline.py --config config/repro_web_cad.yaml --case office
+python3 run_pipeline.py --config config/repro_local_cad.example.yaml --case example
 ```
 
-输出位于 `runs/web-cad/<case>/`：
+输出位于 `runs/local-cad/<case>/`：
 
 | 输出 | 说明 |
 |------|------|
@@ -47,7 +51,7 @@ python3 run_pipeline.py --config config/repro_web_cad.yaml --case office
 文本语义模块默认关闭，可按需开启：
 
 ```bash
-python3 run_pipeline.py --config config/repro_web_cad.yaml --case office --with-text
+python3 run_pipeline.py --config config/repro_local_cad.example.yaml --case example --with-text
 ```
 
 ## Pipeline 阶段
@@ -66,7 +70,7 @@ DWG 转换仍由 `cad2osm/script/core_process/dwg2dxf_oda.py` 支持，但需要
 内置默认值 < YAML global < case profile < case overrides < CLI overrides
 ```
 
-关键参数集中在 `config/repro_web_cad.yaml`，每次运行都会写入 `effective_config.yaml`。
+关键参数集中在所选 YAML 配置中，每次运行都会写入 `effective_config.yaml`。
 
 | 参数 | 单位 | 影响阶段 | CLI 覆盖 |
 |------|------|----------|----------|
@@ -85,7 +89,7 @@ DWG 转换仍由 `cad2osm/script/core_process/dwg2dxf_oda.py` 支持，但需要
 
 | 组件 | 功能 | 入口 |
 |------|------|------|
-| `run_pipeline.py` | 可复现的 DXF 到 osmAG 统一编排 | `python3 run_pipeline.py --case office` |
+| `run_pipeline.py` | 可复现的 DXF 到 osmAG 统一编排 | `python3 run_pipeline.py --config <配置> --case <case>` |
 | `cad2osm/script/core_process` | CAD 预处理工具 | 由 `run_pipeline.py` 调用，也可单独使用 |
 | `area_graph_segment` | AreaGraph 分割与 osmAG 导出 | `area_graph_segment/build/bin/area_graph_segmentation` |
 | `cad2osm/script/text_extract_module` | 可选 DXF 文本提取与房间命名 | `text_extractor.py` |

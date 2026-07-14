@@ -18,23 +18,27 @@ This repository converts CAD floor plans into **osmAG** maps: standard OSM XML w
 
 Paper: [Generation of Indoor Open Street Maps for Robot Navigation from CAD Files](https://arxiv.org/abs/2507.00552)
 
+## CAD Data Policy
+
+This repository does not distribute CAD source files or their derived artifacts. Supply only files you are authorized to use from a local path outside the repository. In particular, do not commit material downloaded from ArchWeb; its [Terms and Conditions](https://www.archweb.com/en/terms-and-conditions/) restrict redistribution.
+
 ## Reproducible Quick Start
 
-The recommended reproducibility entrypoint starts from the tracked DXF subset under `cad2osm/data/web-cad/dxf/original`, avoiding the external DWG/ODA dependency.
+The reproducibility entrypoint reads an authorized local DXF path from the example configuration. Copy `config/repro_local_cad.example.yaml`, replace the placeholder path, and keep the source data outside the repository.
 
 ```bash
 # Build the AreaGraph executable
 cmake -S area_graph_segment -B area_graph_segment/build
 cmake --build area_graph_segment/build --target area_graph_segmentation -j
 
-# Preview one tracked web-cad case without running the pipeline
-python3 run_pipeline.py --config config/repro_web_cad.yaml --case office --dry-run
+# Preview the configured local case without running the pipeline
+python3 run_pipeline.py --config config/repro_local_cad.example.yaml --case example --dry-run
 
 # Run one case end to end: DXF -> SVG/bounds -> PNG -> osmAG
-python3 run_pipeline.py --config config/repro_web_cad.yaml --case office
+python3 run_pipeline.py --config config/repro_local_cad.example.yaml --case example
 ```
 
-Outputs are written to `runs/web-cad/<case>/`:
+Outputs are written to `runs/local-cad/<case>/`:
 
 | Output | Purpose |
 |--------|---------|
@@ -47,7 +51,7 @@ Outputs are written to `runs/web-cad/<case>/`:
 The optional text naming stage is disabled by default:
 
 ```bash
-python3 run_pipeline.py --config config/repro_web_cad.yaml --case office --with-text
+python3 run_pipeline.py --config config/repro_local_cad.example.yaml --case example --with-text
 ```
 
 ## Pipeline Stages
@@ -66,7 +70,7 @@ Configuration priority is:
 built-in defaults < config global defaults < case profile < case overrides < CLI overrides
 ```
 
-Key parameters live in `config/repro_web_cad.yaml` and are copied into each run's `effective_config.yaml`.
+Key parameters live in the selected YAML configuration and are copied into each run's `effective_config.yaml`.
 
 | Parameter | Unit | Used By | CLI Override |
 |-----------|------|---------|--------------|
@@ -84,7 +88,7 @@ Key parameters live in `config/repro_web_cad.yaml` and are copied into each run'
 
 | Module | Purpose | Entry |
 |--------|---------|-------|
-| `run_pipeline.py` | Reproducible DXF-to-osmAG orchestration | `python3 run_pipeline.py --case office` |
+| `run_pipeline.py` | Reproducible DXF-to-osmAG orchestration | `python3 run_pipeline.py --config <config> --case <case>` |
 | `cad2osm/script/core_process` | CAD preprocessing utilities | imported by `run_pipeline.py` or used directly |
 | `area_graph_segment` | AreaGraph segmentation and osmAG export | `area_graph_segment/build/bin/area_graph_segmentation` |
 | `cad2osm/script/text_extract_module` | Optional DXF text extraction and room naming | `text_extractor.py` |

@@ -385,8 +385,8 @@ def save_occupancy_grid(occupancy_grid, output_path):
 if __name__ == "__main__":
     # --- 用户可修改路径 ---
     # 输入路径 - 可以是单个SVG文件或包含SVG文件的文件夹
-    input_path = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/web-cad/img/svg_manual_filter/historical_museum.svg"
-    output_dir = "/home/jay/AGSeg_ws/AGSeg/test_output"
+    input_path = "/path/to/authorized/svg/input.svg"
+    output_dir = "/path/to/local/png/output"
     target_output_size = (4000, 4000) # 默认目标 PNG 尺寸（当bounds.json不存在时使用）
     target_line_thickness = 1        # 输出 PNG 中的线条粗细 (1表示保持原样)
     
@@ -464,8 +464,8 @@ if __name__ == "__main__":
         print(f"PNG 文件保存在: {output_dir}")
 
     # # 旧的单文件处理逻辑 (注释掉或删除)
-    # svg_file = "/home/jay/agSeg_ws/area_graph_segment/data_img/SIST_f1_latest_v5.svg"
-    # output_file = "/home/jay/agSeg_ws/area_graph_segment/data_img/SIST_f1_latest_v5.png" 
+    # svg_file = "/path/to/authorized/svg/input.svg"
+    # output_file = "/path/to/local/png/output.png"
     # grid = svg_to_occupancy_grid(
     #     svg_file,
     #     output_size=(4000, 4000),

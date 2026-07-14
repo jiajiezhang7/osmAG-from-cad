@@ -99,8 +99,8 @@ def extract_layer_info(dxf_file, output_file):
 
 def main():
     # --- 硬编码输入输出路径 ---
-    input_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/data_dxf/us-standard-download"
-    output_dir = "/home/jay/AGSeg_ws/AGSeg/cad2osm/data/data_info/us-standard-download-original"
+    input_dir = "/path/to/authorized/dxf/input"
+    output_dir = "/path/to/local/layer-info/output"
 
     # --- 检查输入目录是否存在 --- 
     if not os.path.isdir(input_dir):

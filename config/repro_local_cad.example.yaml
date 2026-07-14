@@ -1,5 +1,5 @@
 pipeline:
-  output_root: runs/web-cad
+  output_root: runs/local-cad
   area_graph_executable: area_graph_segment/build/bin/area_graph_segmentation
   text_enabled: false
 
@@ -139,21 +139,6 @@ profiles:
         min_area: 20.0
 
 cases:
-  office:
-    profile: office
-    dxf: cad2osm/data/web-cad/dxf/original/office.dxf
-  schema-ufficio-1:
-    profile: office
-    dxf: cad2osm/data/web-cad/dxf/original/schema-ufficio-1.dxf
-  schema-ufficio-4:
-    profile: office
-    dxf: cad2osm/data/web-cad/dxf/original/schema-ufficio-4.dxf
-  schema-ufficio-15:
-    profile: office
-    dxf: cad2osm/data/web-cad/dxf/original/schema-ufficio-15.dxf
-  residential_building_1:
-    profile: residential
-    dxf: cad2osm/data/web-cad/dxf/original/residential_building_1.dxf
-  Universita-pianta-02:
-    profile: school
-    dxf: cad2osm/data/web-cad/dxf/original/Universita-pianta-02.dxf
+  example:
+    profile: default
+    dxf: /path/to/authorized/input.dxf

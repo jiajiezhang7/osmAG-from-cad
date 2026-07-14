@@ -262,7 +262,7 @@ def run_case(args: argparse.Namespace) -> None:
 
     pipeline_config = config.get("pipeline", {}) or {}
     preprocessing_config = config.get("preprocessing", {}) or {}
-    output_root = resolve_path(args.output_root or pipeline_config.get("output_root", "runs/web-cad"))
+    output_root = resolve_path(args.output_root or pipeline_config.get("output_root", "runs/local-cad"))
     case_output_dir = output_root / args.case
     preprocess_dir = case_output_dir / "preprocess"
     area_graph_dir = case_output_dir / "area_graph"
@@ -451,7 +451,7 @@ def run_case(args: argparse.Namespace) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run the reproducible CAD -> osmAG pipeline")
-    parser.add_argument("--config", default="config/repro_web_cad.yaml", help="Pipeline YAML config")
+    parser.add_argument("--config", default="config/repro_local_cad.example.yaml", help="Pipeline YAML config")
     parser.add_argument("--case", help="Case name from the config")
     parser.add_argument("--list-cases", action="store_true", help="List configured cases and exit")
     parser.add_argument("--dry-run", action="store_true", help="Write effective config/manifest and print planned commands")
