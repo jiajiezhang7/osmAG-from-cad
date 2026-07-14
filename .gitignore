@@ -39,6 +39,7 @@ bin/
 .idea/
 logs/
 runs/
+/config/repro_local_cad.yaml
 cmake-build-debug/
 test_output/
 .cursor/

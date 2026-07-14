@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 """
 DXF图层过滤脚本
-基于JSON配置文件中的图层列表过滤CAD图层
+基于JSON配置文件中的图层名称和前缀过滤CAD图层
 
-该脚本接收DXF文件作为输入，并根据配置文件中的图层列表过滤图层，输出过滤后的DXF文件
+该脚本接收DXF文件作为输入，并根据配置文件中的图层规则过滤图层，输出过滤后的DXF文件
 支持NCS和GB/T两种标准
 """
 
@@ -44,16 +44,20 @@ def load_filter_config(config_file, standard):
             logging.warning(f"配置文件中未找到标准 '{standard}'，使用默认配置")
             return get_default_config()
         
-        # 获取指定标准的图层列表
+        # 获取指定标准的图层规则
         standard_config = config[standard]
         
-        # 提取图层列表
-        exact_match_layers = []
+        # 通用别名不代表任何标准定义，只保留项目既有的兼容行为
+        common_config = config.get('common', {})
+        exact_match_layers = list(common_config.get('aliases', []))
+        prefix_match_layers = []
         
-        # NCS标准只有一个layers列表
+        # NCS配置使用前缀；兼容旧配置中的精确匹配列表
         if standard == 'NCS':
             if 'layers' in standard_config:
                 exact_match_layers.extend(standard_config['layers'])
+            if 'prefixes' in standard_config:
+                prefix_match_layers.extend(standard_config['prefixes'])
         # GB/T标准有中英文两个列表
         elif standard == 'GB/T':
             if 'layers_chinese' in standard_config:
@@ -66,6 +70,7 @@ def load_filter_config(config_file, standard):
         
         return {
             'exact_match_layers': exact_match_layers,
+            'prefix_match_layers': prefix_match_layers,
             'case_sensitive': False
         }
     except Exception as e:
@@ -84,23 +89,26 @@ def get_default_config():
         'exact_match_layers': [
             # 基本图层
             '0', 'Defpoints', 
-            # 英文标准图层
-            'A-WALL', 'A-COLS', 'A-SLAB', 'A-WINDOW', 'A-DOOR', 'A-STAIR',
-            # 中文标准图层
+            # 项目特定或常见别名，不视为NCS定义的标准层名
+            'A-COLS', 'A-SLAB', 'A-WINDOW', 'A-WIND', 'A-DOOR', 'A-STAIR',
+            # 项目配置的中文图层别名
             '建-墙', '建-柱', '建-板', '建-窗', '建-门', '建-梯'
         ],
+        # 与论文表述一致：A-WALL-* 为NCS-aligned墙体图层前缀
+        'prefix_match_layers': ['A-WALL'],
         'case_sensitive': False
     }
 
 
 def should_keep_layer(layer_name, params=None):
     """
-    基于精确匹配图层名判断是否保留图层
+    基于精确名称或分段前缀判断是否保留图层
     
     参数:
         layer_name (str): 图层名称
         params (dict): 过滤参数，包含以下键:
             - exact_match_layers (list): 完全匹配这些名称的图层将被保留
+            - prefix_match_layers (list): 匹配这些前缀或其连字符子层的图层将被保留
             - case_sensitive (bool): 是否区分大小写，默认为False
     
     返回:
@@ -112,18 +120,24 @@ def should_keep_layer(layer_name, params=None):
     
     # 提取参数
     exact_match_layers = params.get('exact_match_layers', [])
+    prefix_match_layers = params.get('prefix_match_layers', [])
     case_sensitive = params.get('case_sensitive', False)
-    
-    # 检查是否为绝对包含的图层名（完全匹配）
-    if layer_name in exact_match_layers:
+
+    if case_sensitive:
+        candidate = layer_name
+        exact_names = exact_match_layers
+        prefixes = prefix_match_layers
+    else:
+        candidate = layer_name.upper()
+        exact_names = [layer.upper() for layer in exact_match_layers]
+        prefixes = [prefix.upper() for prefix in prefix_match_layers]
+
+    if candidate in exact_names:
         return True
-    
-    # 如果不区分大小写，则转换为大写进行比较
-    if not case_sensitive:
-        layer_name_upper = layer_name.upper()
-        exact_match_layers_upper = [layer.upper() for layer in exact_match_layers]
-        if layer_name_upper in exact_match_layers_upper:
-            return True
+
+    # A-WALL前缀匹配A-WALL本身及A-WALL-*子层，避免误匹配A-WALLPAPER等名称
+    if any(candidate == prefix or candidate.startswith(f'{prefix}-') for prefix in prefixes):
+        return True
     
     # 默认不保留
     return False

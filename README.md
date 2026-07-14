@@ -29,18 +29,22 @@ To support reproducibility without embedding protected data, this repository inc
 
 ## Reproducible Quick Start
 
-The reproducibility entrypoint reads an authorized local DXF path from the example configuration. Copy `config/repro_local_cad.example.yaml`, replace the placeholder path, and keep the source data outside the repository.
+The protected experimental CAD files are intentionally not tracked. To run the pipeline, copy the tracked configuration template to a Git-ignored local configuration and replace its placeholder with the path to a DXF file you are authorized to use. Keep that source file outside the repository.
 
 ```bash
+# Create a local configuration, then edit its `cases.example.dxf` value
+cp config/repro_local_cad.example.yaml config/repro_local_cad.yaml
+# Replace /path/to/authorized/input.dxf in config/repro_local_cad.yaml
+
 # Build the AreaGraph executable
 cmake -S area_graph_segment -B area_graph_segment/build
 cmake --build area_graph_segment/build --target area_graph_segmentation -j
 
 # Preview the configured local case without running the pipeline
-python3 run_pipeline.py --config config/repro_local_cad.example.yaml --case example --dry-run
+python3 run_pipeline.py --config config/repro_local_cad.yaml --case example --dry-run
 
 # Run one case end to end: DXF -> SVG/bounds -> PNG -> osmAG
-python3 run_pipeline.py --config config/repro_local_cad.example.yaml --case example
+python3 run_pipeline.py --config config/repro_local_cad.yaml --case example
 ```
 
 Outputs are written to `runs/local-cad/<case>/`:
@@ -56,7 +60,7 @@ Outputs are written to `runs/local-cad/<case>/`:
 The optional text naming stage is disabled by default:
 
 ```bash
-python3 run_pipeline.py --config config/repro_local_cad.example.yaml --case example --with-text
+python3 run_pipeline.py --config config/repro_local_cad.yaml --case example --with-text
 ```
 
 ## Pipeline Stages

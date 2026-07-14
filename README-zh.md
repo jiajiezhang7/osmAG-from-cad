@@ -29,18 +29,22 @@
 
 ## 快速复现
 
-复现入口从示例配置读取已获授权的本地 DXF 路径。请复制 `config/repro_local_cad.example.yaml`、替换占位路径，并将源数据保存在仓库外。
+受保护的实验 CAD 文件有意不纳入版本控制。运行流程前，请将已追踪的配置模板复制为 Git 忽略的本地配置，并把占位值替换为您有权使用的 DXF 文件路径；源文件应保存在仓库外。
 
 ```bash
+# 创建本地配置，然后修改其中的 `cases.example.dxf`
+cp config/repro_local_cad.example.yaml config/repro_local_cad.yaml
+# 替换 config/repro_local_cad.yaml 中的 /path/to/authorized/input.dxf
+
 # 构建 AreaGraph 可执行文件
 cmake -S area_graph_segment -B area_graph_segment/build
 cmake --build area_graph_segment/build --target area_graph_segmentation -j
 
 # 预览配置中的本地 case，不实际运行
-python3 run_pipeline.py --config config/repro_local_cad.example.yaml --case example --dry-run
+python3 run_pipeline.py --config config/repro_local_cad.yaml --case example --dry-run
 
 # 单 case 端到端复现：DXF -> SVG/bounds -> PNG -> osmAG
-python3 run_pipeline.py --config config/repro_local_cad.example.yaml --case example
+python3 run_pipeline.py --config config/repro_local_cad.yaml --case example
 ```
 
 输出位于 `runs/local-cad/<case>/`：
@@ -56,7 +60,7 @@ python3 run_pipeline.py --config config/repro_local_cad.example.yaml --case exam
 文本语义模块默认关闭，可按需开启：
 
 ```bash
-python3 run_pipeline.py --config config/repro_local_cad.example.yaml --case example --with-text
+python3 run_pipeline.py --config config/repro_local_cad.yaml --case example --with-text
 ```
 
 ## Pipeline 阶段
